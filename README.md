@@ -1,143 +1,89 @@
-# LearnTwin
+# ROS3-Limassol
 
-LearnTwin is an open-source workspace for degree progress, study planning and PhD application preparation, alongside a classroom-feedback prototype.
+An **OpenPELAOS** project for telemetry arrival-liveness monitoring in intermittently connected robotic systems.
 
-Track verified course credits, prioritise assignments, prepare thesis milestones and organise application requirements in one browser-based workspace. The project began as a DigiEduHack 2025 prototype and also includes a Python learning-analytics library.
+**Project lead and paper author:** [Charalampos Nadiotis](https://github.com/n0711).
+**Initial project idea:** [Christos Paparistodemou](https://www.researchgate.net/profile/Christos-Paparistodemou).
 
-> **Current branch:** The degree and PhD planner is available on `main`. [PR #5](https://github.com/n0711/LearnTwin/pull/5) was merged on 19 October 2026. A merge does not by itself verify a hosted deployment.
+[Paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) · [Package guide](robotics/ros3_limassol/README.md) · [Recording format](robotics/ros3_limassol/docs/RECORDING.md) · [Validation](robotics/ros3_limassol/docs/VALIDATION.md)
 
-## ROS3-Limassol technical report
+## Run the prototype
 
-[Read the paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf): *ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring*.
-
-- **Author:** Charalampos Nadiotis.
-- **Initial project idea:** Christos Paparistodemou.
-- **Date and status:** 23 October 2026; preliminary technical report.
-
-The report describes the OpenPELAOS telemetry-liveness prototype. The code currently in this repository is LearnTwin; the report's prototype and experimental results should not be attributed to this checkout.
-
-## First successful session
-
-1. Start the planner using the commands below.
-2. Review the sample course baseline before entering your own information.
-3. Add one assignment and one thesis milestone, then inspect the weekly plan.
-4. Export a JSON backup. Keep it private and test import with a separate browser profile.
-
-The software is free under the MIT license. There is no required subscription,
-paid account or admission guarantee. See [the product scope](docs/PRODUCT_SCOPE.md)
-for the boundary between the planner and any optional setup assistance.
-
-## What works today
-
-- **Degree planning:** editable remaining-credit baseline, course status and verified ECTS.
-- **Study planning:** assignments, due dates, effort estimates and up to five prioritised next actions.
-- **Thesis preparation:** research question, confirmed supervisor, next milestone and notes.
-- **PhD preparation:** a sortable, filterable programme shortlist with research-fit and eligibility notes, funding source verification, checklist progress and next actions. User-entered evidence does not establish admission eligibility or funding guarantees.
-- **Local records:** browser storage, validated JSON backup/import and a text weekly-plan export.
-- **Classroom API:** JSON feedback ingestion and class-level aggregates stored in SQLite.
-
-The classroom reflection dashboard uses mock data; its live dashboard simulates signals. Student submissions reach the API, but the dashboards do not yet display those stored submissions. The HTTP recommendation endpoint is a stub.
-
-There is no AI chat, PDF/video ingestion in the browser-only planner, automatic official degree audit, university integration, cloud sync or application submission. An optional local Frederick Academic Record PDF import and GPA history view is available when you run the FastAPI + Rust/SQLite service; see [Frederick academic import](docs/ACADEMIC_IMPORT.md). Planner records and checklist completion are user-entered evidence, not admission or funding predictions.
-
-## Start the planner
-
-Prerequisites: Git and Node.js 22.12+ with npm. The Python backend is unnecessary for the planner.
+Use Python 3.10 or newer. The core uses only the standard library.
 
 ```sh
-git clone https://github.com/n0711/LearnTwin.git
-cd LearnTwin/frontend
-npm ci
-npm run dev -- --host localhost --port 5173
+git clone https://github.com/n0711/ROS3-Limassol.git
+cd ROS3-Limassol/robotics/ros3_limassol
+python -m ros3_limassol.demo
 ```
 
-Open the URL printed by Vite, normally http://localhost:5173. Review the seeded courses and baseline before adding your own records. Export a backup regularly.
+On Windows, `py -3` can replace `python`; on Linux, use `python3` if needed.
+The default experiment uses virtual time and finishes immediately.
 
-For an existing checkout, preserve any local changes before switching to `main` and pulling updates.
+```text
+t= 0.0s  WAITING
+t= 0.0s  HEALTHY
+t= 2.9s  STALE
+t= 5.0s  HEALTHY
+Accepted: 51; rejected: 0
+```
 
-## Run the optional classroom backend
+## Record and replay
 
-Use Python 3.10+ and a separate terminal. Run from the repository root.
-
-**Linux / macOS / WSL**
+From the same directory:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-cd backend
-API_KEY=devkey ../.venv/bin/python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
+python -m ros3_limassol.demo --record run.jsonl
+python -m ros3_limassol.replay run.jsonl --json
+python -m ros3_limassol.replay run.jsonl --stale-after 2.0
 ```
 
-**Windows PowerShell**
+Recording includes silent observation ticks during the blackout. Replay uses the
+recorded receiver-relative clock and can compare timeout choices against the same
+observations. Recording creates a new file and refuses to overwrite one.
 
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-$env:API_KEY = "devkey"
-cd backend
-..\.venv\Scripts\python.exe -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
-```
+## Current implementation
 
-The working directory matters: the backend uses local imports and defaults to `app.db` in that directory. Check http://localhost:8000/health and use http://localhost:8000/docs for interactive API documentation. The API root `/` has no route.
+- Strict version-1 JSON telemetry with explicit units and bounded payloads.
+- WAITING, HEALTHY and STALE states driven by accepted receiver arrivals.
+- Duplicate, out-of-order and retired-session rejection with bounded history.
+- A synthetic USV source and a repeatable blackout/recovery scenario.
+- Streaming JSONL recording/replay, including malformed-payload rejections.
+- An optional ROS 2 Jazzy publisher/observer adapter and launch file.
+- Core, packaging and ROS graph checks in [GitHub Actions](https://github.com/n0711/ROS3-Limassol/actions/workflows/ros3-ci.yml).
 
-In `frontend/.env`, match the backend settings:
+`HEALTHY` means accepted telemetry arrived recently. It does not establish sensor
+capture freshness, navigation accuracy or vehicle health. This prototype has no
+vehicle-command interface. ROS3-Limassol is an independent project using ROS 2,
+not an official ROS distribution.
 
-```dotenv
-VITE_API_URL=http://localhost:8000
-VITE_API_KEY=devkey
-```
+The paper records the original 0.1.0 experiment. Package version 0.2.0 adds
+recording/replay; current validation is documented separately.
 
-Restart Vite after editing environment variables. `devkey` is for local development; `VITE_*` values are visible to browser users and cannot protect a public multi-user service.
+## Development
 
-## Documentation
-
-- [Documentation index](docs/README.md)
-- [Degree and PhD planner guide](docs/DEGREE_PHD_PLANNER.md)
-- [Frederick PDF importer and Rust/SQLite setup](docs/ACADEMIC_IMPORT.md)
-- [Architecture and implementation boundaries](docs/ARCHITECTURE.md)
-- [Classroom API and integration](frontend/BACKEND_INTEGRATION.md)
-- [Data formats](docs/data_schemas.md)
-- [Frontend development](frontend/README.md)
-- [Known issues](KNOWN_ISSUES.md)
-- [Contributing](CONTRIBUTING.md)
-- [Roadmap](docs/ROADMAP.md)
-
-## Prepared desktop bundle
-
-The Fun and Games bundle includes a prebuilt planner. With Node.js installed,
-run its `Start-LearnTwin.cmd`; no npm dependency installation is required to use
-that prepared build. In a source checkout, run `npm ci` and `npm run build` in
-`frontend/`, then `node serve-built.mjs`. The server binds to loopback on port
-5173 and serves only `dist/`.
-
-## Checks and production build
-
-From `frontend/`:
+From the package directory:
 
 ```sh
-npm test
-npm run lint
-npm run build
-npm run preview
+python -m unittest discover -s tests -v
 ```
 
-These are separate checks; a successful build does not establish that lint or all tests pass. The static output is `frontend/dist/`. Serve it at the root of an HTTPS origin; the planner uses hash routes. Preview is a local build check, not a production server.
+The optional transport targets Jazzy on Ubuntu 24.04. The [package guide](robotics/ros3_limassol/README.md)
+contains build, launch, topic-inspection and test commands. See the
+[architecture](robotics/ros3_limassol/docs/ARCHITECTURE.md),
+[telemetry contract](robotics/ros3_limassol/docs/TELEMETRY.md),
+[roadmap](robotics/ros3_limassol/docs/ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
-From the repository root, with Python dependencies installed:
+## Existing LearnTwin components
 
-```sh
-python -m pytest
-```
+This repository was initialized with LearnTwin files. They remain under
+`frontend/`, `backend/`, `learntwin/` and the existing documentation and tests.
+Their [original guide](LEARNTWIN_README.md) remains available. ROS3-Limassol lives
+under `robotics/ros3_limassol/` with its own package and test configuration.
 
-Use your virtual environment's Python executable if it is not activated. See [known issues](KNOWN_ISSUES.md) before interpreting existing failures.
+## Licenses
 
-## Data and privacy
-
-Planner records stay in localStorage for the current browser profile and origin. Changing host, protocol or port uses a different storage area. Clearing site data can remove records. JSON exports contain your entered notes and application information; keep them private.
-
-Classroom feedback is stored separately in SQLite. The current shared-key prototype lacks user accounts and per-class access control. Use synthetic classroom data during development.
-
-## License
-
-[MIT](LICENSE).
+The ROS3-Limassol package uses [Apache-2.0](robotics/ros3_limassol/LICENSE), with
+attribution in [NOTICE](robotics/ros3_limassol/NOTICE). Existing LearnTwin material
+retains the repository's [MIT license](LICENSE).
 
