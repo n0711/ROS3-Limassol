@@ -16,3 +16,11 @@
 academic_records.sqlite3
 academic_records.sqlite3-*
 backend/academic_store/target/
+
+# ROS workspace output and local telemetry recordings
+/build/
+/install/
+/log/
+/robotics/ros3_limassol/build/
+/robotics/ros3_limassol/dist/
+/robotics/ros3_limassol/*.jsonl

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ros3_limassol</name>
+  <version>0.2.0</version>
+  <description>Experimental ROS 2 toolkit for field-robot telemetry and link liveness.</description>
+  <maintainer email="149877461+n0711@users.noreply.github.com">Charalampos Nadiotis</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

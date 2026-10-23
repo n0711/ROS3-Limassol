@@ -1,6 +1,15 @@
-# Contributing to LearnTwin
+# Contributing to ROS3-Limassol
 
-Start with the [README](README.md) and [architecture](docs/ARCHITECTURE.md). Keep changes focused and describe observable behavior.
+Use the [ROS3-Limassol contributor guide](robotics/ros3_limassol/CONTRIBUTING.md)
+for robotics work. Start from current `main`, create a focused branch, run the
+package tests and `git diff --check`, and open a pull request with the observed
+results. Keep the core runnable without ROS. Document unavailable ROS checks.
+
+The ROS3-Limassol package is Apache-2.0; existing LearnTwin components remain MIT.
+
+## Existing LearnTwin components
+
+Start with the [LearnTwin guide](LEARNTWIN_README.md) and [architecture](docs/ARCHITECTURE.md). Keep changes focused and describe observable behavior.
 
 ## Choose the right base
 
