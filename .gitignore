@@ -1,0 +1,18 @@
+﻿__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local virtual environments, logs and packaging metadata
+.venv/
+.logs/
+*.egg-info/
+
+# SQLite files the classroom backend and tests create at runtime
+*.db
+*.db-shm
+*.db-wal
+
+# Private local academic records and Rust build output
+academic_records.sqlite3
+academic_records.sqlite3-*
+backend/academic_store/target/
