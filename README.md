@@ -6,6 +6,16 @@ Track verified course credits, prioritise assignments, prepare thesis milestones
 
 > **Current branch:** The degree and PhD planner is available on `main`. [PR #5](https://github.com/n0711/LearnTwin/pull/5) was merged on 19 October 2026. A merge does not by itself verify a hosted deployment.
 
+## ROS3-Limassol technical report
+
+[Read the paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf): *ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring*.
+
+- **Author:** Charalampos Nadiotis.
+- **Initial project idea:** Christos Paparistodemou.
+- **Date and status:** 23 October 2026; preliminary technical report.
+
+The report describes the OpenPELAOS telemetry-liveness prototype. The code currently in this repository is LearnTwin; the report's prototype and experimental results should not be attributed to this checkout.
+
 ## First successful session
 
 1. Start the planner using the commands below.
