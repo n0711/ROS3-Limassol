@@ -59,8 +59,8 @@ vehicle-command interface. ROS3-Limassol is an independent project using ROS 2,
 not an official ROS distribution.
 
 The paper records the original 0.1.0 experiment. Version 0.2.0 adds offline
-recording/replay; 0.3.0 adds live ROS recording. Current validation is documented
-separately.
+recording/replay; 0.3.0 adds live ROS recording; 0.3.1 adds Humble compatibility.
+Current validation is documented separately.
 
 After building the ROS package, record an existing `/limassol/usv01/telemetry`
 stream in a second sourced terminal:
