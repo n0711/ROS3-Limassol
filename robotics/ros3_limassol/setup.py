@@ -5,7 +5,7 @@ PACKAGE = "ros3_limassol"
 
 setup(
     name=PACKAGE,
-    version="0.2.0",
+    version="0.3.0",
     packages=find_packages(exclude=("tests", "tests.*")),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + PACKAGE]),
@@ -28,6 +28,7 @@ setup(
             "limassol_replay = ros3_limassol.replay:main",
             "sim_usv = ros3_limassol.ros_nodes:sim_main",
             "link_monitor = ros3_limassol.ros_nodes:monitor_main",
+            "telemetry_recorder = ros3_limassol.ros_nodes:recorder_main",
         ],
     },
 )

@@ -18,6 +18,7 @@ def main():
     with zipfile.ZipFile(wheel) as archive:
         members = archive.namelist()
         for suffix in ("ros3_limassol/replay.py", "ros3_limassol/recording.py",
+                       "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/package.xml", "/LICENSE",
                        "/NOTICE", "/resource_index/packages/ros3_limassol"):
             if not any(member.endswith(suffix) for member in members):
@@ -41,7 +42,25 @@ def main():
         events = [json.loads(line) for line in demo.splitlines()]
         if events[-1]["accepted"] != 51 or events[-1]["rejected"] != 0:
             raise RuntimeError("installed demo did not reproduce the paper's counts")
-        print("Installed wheel: record/replay matched; 51 accepted, 0 rejected")
+        # Exercise the live writer from the installed package without ROS.
+        # A synthetic receiver clock makes the outage reproducible here.
+        script = '''
+from ros3_limassol.live_recorder import LiveRecorder
+from ros3_limassol.simulator import UsvSimulator
+now = [123.0]
+with LiveRecorder("live.jsonl", clock=lambda: now[0]) as recorder:
+    recorder.receive(UsvSimulator(session_id="wheel").sample(0, 0).to_json())
+    now[0] += 1.0
+    recorder.tick()
+'''
+        subprocess.run([sys.executable, "-c", script], cwd=root, env=env, check=True)
+        live = subprocess.check_output([
+            sys.executable, "-m", "ros3_limassol.replay", "live.jsonl", "--json",
+        ], cwd=root, env=env, text=True)
+        live_events = [json.loads(line) for line in live.splitlines()]
+        if live_events[-1]["state"] != "STALE" or live_events[-1]["accepted"] != 1:
+            raise RuntimeError("installed live recorder did not preserve silence")
+        print("Installed wheel: demo replay matched; live recording preserved silence")
 
 
 if __name__ == "__main__":

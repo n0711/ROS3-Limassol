@@ -49,6 +49,7 @@ observations. Recording creates a new file and refuses to overwrite one.
 - Duplicate, out-of-order and retired-session rejection with bounded history.
 - A synthetic USV source and a repeatable blackout/recovery scenario.
 - Streaming JSONL recording/replay, including malformed-payload rejections.
+- A receive-only ROS telemetry recorder with independent silence ticks and new-file protection.
 - An optional ROS 2 Jazzy publisher/observer adapter and launch file.
 - Core, packaging and ROS graph checks in [GitHub Actions](https://github.com/n0711/ROS3-Limassol/actions/workflows/ros3-ci.yml).
 
@@ -57,8 +58,20 @@ capture freshness, navigation accuracy or vehicle health. This prototype has no
 vehicle-command interface. ROS3-Limassol is an independent project using ROS 2,
 not an official ROS distribution.
 
-The paper records the original 0.1.0 experiment. Package version 0.2.0 adds
-recording/replay; current validation is documented separately.
+The paper records the original 0.1.0 experiment. Version 0.2.0 adds offline
+recording/replay; 0.3.0 adds live ROS recording. Current validation is documented
+separately.
+
+After building the ROS package, record an existing `/limassol/usv01/telemetry`
+stream in a second sourced terminal:
+
+```bash
+ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
+```
+
+Stop with Ctrl+C and replay from the package directory using
+`python -m ros3_limassol.replay run.jsonl --json`. Paths are relative to each
+terminal's working directory; use an absolute path when the terminals differ.
 
 ## Development
 

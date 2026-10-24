@@ -43,8 +43,41 @@ WAITING with zero accepted/rejected messages.
   times and backwards time are errors. Oversized payloads are recording errors;
   this format does not preserve oversized incoming messages.
 
-The demo records synthetic observations. A live ROS, UDP or MAVLink recorder is
-future work. External recorders must use offsets from one receiver monotonic
-clock and periodic null ticks to represent silence. Sender timestamps remain
-payload metadata. Replay reproduces the application rule; it does not measure
-network latency, discovery, scheduling or sensor capture freshness.
+## Live ROS recording (0.3.0)
+
+`telemetry_recorder` subscribes to the existing `telemetry` topic; it does not
+publish application telemetry, link status or vehicle commands. The
+`record_telemetry.launch.py` launch selects `/limassol/<robot_id>/`. Start it in a
+sourced ROS workspace with `output_path:=run.jsonl`; see the [package guide](../README.md).
+
+The transport-independent `LiveRecorder` creates the file exclusively and writes
+an initial null observation at time zero. Callback arrivals and periodic null
+ticks share offsets from one receiver `time.monotonic()` clock. The timer uses a
+steady ROS clock, so silence continues to be observed without incoming messages
+and when ROS simulation time is paused. Timer callbacks do not establish a hard
+scheduling bound. Shutdown closes the file without inventing an additional tick.
+
+Each observation is flushed for incremental reading. This does not call `fsync`
+or guarantee persistence during a crash or power loss. Writes run synchronously;
+a slow disk can delay callback processing. A broken final line after an I/O or
+process failure is reported as an input error by replay, rather than repaired.
+
+The default maximum is one million observations, counting arrivals and null
+ticks together, including the initial observation. `max_records` may reduce that
+limit. At the limit, or on a file/clock error, the recorder process exits nonzero;
+the existing file is retained. There is no silent rotation or automatic overwrite.
+Choose a new path for a new session. Bounded malformed JSON is recorded unchanged
+and rejected later by replay. Oversized/non-UTF-8 payloads cannot fit this format:
+the ROS node counts them, warns on the first occurrence, and logs the total on
+shutdown. They do not appear in the replay rejection count.
+
+The recorder uses best-effort, volatile, depth-1 telemetry QoS. It records only
+callbacks actually delivered to this subscriber; it may miss discovery-time
+traffic, dropped messages or samples superseded before callback execution. Its
+receiver arrival clock differs from a separately running monitor's clock and
+timer schedule. Replay reproduces this recorder's observations and does not
+promise identical transition times to that other monitor.
+
+UDP and MAVLink input remain future work. Sender timestamps remain payload
+metadata. Replay reproduces the application rule; it does not measure network
+latency, discovery, scheduling or sensor capture freshness.

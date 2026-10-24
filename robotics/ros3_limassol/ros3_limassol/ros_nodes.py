@@ -11,7 +11,9 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 
+from .live_recorder import LiveRecorder, UnrecordablePayloadError
 from .monitor import LinkMonitor
+from .recording import MAX_RECORDS
 from .simulator import UsvSimulator
 from .telemetry import finite_number
 
@@ -78,6 +80,63 @@ class LinkMonitorNode(Node):
             self._previous = status.state
 
 
+class TelemetryRecorderNode(Node):
+    """Observe telemetry without publishing application data or commands.
+
+    The recorder's receiver clock is independent of both the publisher's
+    timestamps and ROS simulation time. Write/clock/limit errors stop the
+    process rather than quietly producing an incomplete experiment.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__("telemetry_recorder", **kwargs)
+        self.recorder = None
+        self.unrecorded_payloads = 0
+        try:
+            output = self.declare_parameter("output_path", "").value
+            if not isinstance(output, str) or not output.strip():
+                raise ValueError("output_path must name a new recording file")
+            period = finite_number(
+                self.declare_parameter("tick_period_s", 0.1).value, "tick_period_s"
+            )
+            if not 0 < period <= 60:
+                raise ValueError("tick_period_s must be in (0, 60]")
+            maximum = self.declare_parameter("max_records", MAX_RECORDS).value
+            self.recorder = LiveRecorder(output, max_records=maximum)
+            self.subscription = self.create_subscription(
+                String, "telemetry", self._receive, telemetry_qos()
+            )
+            self._steady_clock = Clock(clock_type=ClockType.STEADY_TIME)
+            self.timer = self.create_timer(period, self.recorder.tick, clock=self._steady_clock)
+        except BaseException:
+            if self.recorder is not None:
+                self.recorder.close()
+            super().destroy_node()
+            raise
+
+    def _receive(self, message):
+        try:
+            self.recorder.receive(message.data)
+        except UnrecordablePayloadError:
+            self.unrecorded_payloads += 1
+            if self.unrecorded_payloads == 1:
+                self.get_logger().warning(
+                    "Payload outside version-1 text/size bounds was not recorded; "
+                    "the total will be logged at shutdown."
+                )
+
+    def destroy_node(self):
+        try:
+            if self.recorder is not None:
+                self.recorder.close()
+                self.get_logger().info(
+                    f"Recording closed: {self.recorder.records} observations; "
+                    f"{self.unrecorded_payloads} unrecordable payloads"
+                )
+        finally:
+            super().destroy_node()
+
+
 def _spin(factory, args):
     rclpy.init(args=args)
     node = None
@@ -99,3 +158,10 @@ def sim_main(args=None):
 
 def monitor_main(args=None):
     _spin(LinkMonitorNode, args)
+
+
+def recorder_main(args=None):
+    try:
+        _spin(TelemetryRecorderNode, args)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"telemetry recorder: {exc}") from exc

@@ -62,7 +62,7 @@ The observer logs state transitions instead of logging every sample.
 
 An observer of `link_status` should independently detect missing status arrivals:
 the monitor itself can stop. This version does not provide a downstream status
-watchdog. The two ROS nodes use steady-clock timers, and the domain monitor uses
+watchdog. The ROS nodes use steady-clock timers, and the domain monitor uses
 `time.monotonic()` rather than sender wall time or simulated ROS time.
 
 JSON in `std_msgs/String` keeps this first adapter small. Generated ROS interfaces,
@@ -76,6 +76,15 @@ Replay feeds raw payloads through the same validator and LinkMonitor while
 advancing the recorded receiver clock. It does not replace the ROS transport or
 simulate network timing. See [RECORDING.md](RECORDING.md) for the format and limits.
 
+Version 0.3.0 adds a separate `TelemetryRecorderNode`. It subscribes to the same
+telemetry topic using the existing QoS and delegates file writes to the
+standard-library-only `LiveRecorder`. A steady-clock timer writes null ticks
+independently of subscriptions. Relative timestamps are sampled inside a writer
+lock, so writes from parallel callers cannot reorder the receiver clock.
+File creation is exclusive; writes are incremental and bounded by observation
+count. No telemetry schema or transport is changed. Recording is optional and
+does not run inside the live liveness monitor.
+
 ## Evidence and references
 
 - [Official Jazzy Python publisher/subscriber tutorial](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html): node, package, entry-point, and dependency conventions.
@@ -84,3 +93,6 @@ simulate network timing. See [RECORDING.md](RECORDING.md) for the format and lim
 
 References checked on 23 October 2026. The code is an independent implementation;
 the documentation does not establish that this project's ROS graph has passed.
+The recorder's node/timer/cleanup APIs were also checked against the official
+[Jazzy rclpy source](https://github.com/ros2/rclpy/blob/jazzy/rclpy/rclpy/node.py)
+on 24 October 2026. Executed checks are recorded in [VALIDATION.md](VALIDATION.md).

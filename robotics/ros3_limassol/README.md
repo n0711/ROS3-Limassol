@@ -1,6 +1,6 @@
 # ROS3-Limassol package
 
-OpenPELAOS telemetry-liveness prototype, version 0.2.0. Developed by Charalampos
+OpenPELAOS telemetry-liveness prototype, version 0.3.0. Developed by Charalampos
 Nadiotis; initial project idea credited to Christos Paparistodemou. [Apache-2.0](LICENSE).
 
 ## Standalone Python
@@ -59,6 +59,43 @@ Each robot uses `/limassol/<robot_id>/`. Startup parameters are read once; resta
 the nodes to change them. Steady-clock timers and receiver monotonic time drive
 liveness. No hard scheduling bound is established.
 
+## Record a live ROS stream
+
+After building, run the demo above or an existing schema-v1 telemetry publisher.
+In a second terminal with Jazzy and `install/setup.bash` sourced:
+
+```bash
+ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
+```
+
+The launch starts only a recorder in `/limassol/usv01/`, with best-effort telemetry
+QoS. It creates a new file, records raw arrivals and independent steady-clock
+ticks every 0.1 seconds, and closes the file on Ctrl+C. Replay it with:
+
+```sh
+python -m ros3_limassol.replay run.jsonl --json
+```
+
+Use the same working directory or an absolute recording path. For another robot:
+
+```bash
+ros2 launch ros3_limassol record_telemetry.launch.py robot_id:=usv02 output_path:=usv02.jsonl tick_period_s:=0.05
+```
+
+Then replay with `--robot-id usv02`. For a custom telemetry topic, use the node
+directly and remap it:
+
+```bash
+ros2 run ros3_limassol telemetry_recorder --ros-args -r telemetry:=/my_robot/telemetry -p output_path:=run.jsonl
+```
+
+`tick_period_s` must be in `(0, 60]`. `max_records` must be an integer from 1 to
+1,000,000 and includes the initial WAITING tick, arrivals and silence ticks.
+Reaching the limit or encountering a clock/file error stops recording with a
+nonzero process exit. Existing files are never overwritten. Oversized or
+non-UTF-8 payloads cannot be represented in version 1 and are counted/logged
+separately. See [recording details and limitations](docs/RECORDING.md).
+
 ## Tests and packaging
 
 From this package directory:
@@ -86,5 +123,6 @@ The Jazzy CI job performs the same package build, launch-argument inspection and
 DDS blackout/recovery test. Consult actual job results and the [validation record](docs/VALIDATION.md).
 
 The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
-0.1.0. Recording/replay are additions in 0.2.0. No physical marine dynamics,
+0.1.0. Offline recording/replay were added in 0.2.0; live ROS recording in 0.3.0.
+No physical marine dynamics,
 MAVLink adapter or field deployment has been verified. See the [roadmap](docs/ROADMAP.md).
