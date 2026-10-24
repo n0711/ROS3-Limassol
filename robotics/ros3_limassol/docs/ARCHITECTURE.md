@@ -104,3 +104,11 @@ on 24 October 2026. Both versions support an explicit timer clock; the adapter
 uses no Jazzy-only `create_timer` arguments. Separate ROS CI jobs exercise the
 same package and test suite on each distribution. The standalone Python core
 and schema-v1 recording format are shared.
+
+Version 0.3.1 imports `ClockType` from `rclpy.clock`, which exports it on both
+distributions. Humble does not provide the separate `rclpy.clock_type` module
+used by the initial Jazzy adapter. The first Humble CI run exposed that import
+error; the shared import preserves steady-clock behavior without a
+distribution-name branch. See the official clock implementations for
+[Humble](https://github.com/ros2/rclpy/blob/humble/rclpy/rclpy/clock.py) and
+[Jazzy](https://github.com/ros2/rclpy/blob/jazzy/rclpy/rclpy/clock.py).

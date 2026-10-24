@@ -1,6 +1,6 @@
 # ROS3-Limassol package
 
-OpenPELAOS telemetry-liveness prototype, version 0.3.0. Developed by Charalampos
+OpenPELAOS telemetry-liveness prototype, version 0.3.1. Developed by Charalampos
 Nadiotis; initial project idea credited to Christos Paparistodemou. [Apache-2.0](LICENSE).
 
 ## Standalone Python
@@ -158,5 +158,6 @@ recorder configuration/file-protection tests. Consult actual job results and the
 
 The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
 0.1.0. Offline recording/replay were added in 0.2.0; live ROS recording in 0.3.0.
+Version 0.3.1 adds Humble compatibility and dual-distribution ROS CI.
 No physical marine dynamics,
 MAVLink adapter or field deployment has been verified. See the [roadmap](docs/ROADMAP.md).

@@ -5,7 +5,7 @@ PACKAGE = "ros3_limassol"
 
 setup(
     name=PACKAGE,
-    version="0.3.0",
+    version="0.3.1",
     packages=find_packages(exclude=("tests", "tests.*")),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + PACKAGE]),

@@ -4,8 +4,7 @@
 import time
 
 import rclpy
-from rclpy.clock import Clock
-from rclpy.clock_type import ClockType
+from rclpy.clock import Clock, ClockType
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy

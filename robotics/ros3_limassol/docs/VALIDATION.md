@@ -1,6 +1,6 @@
 # Validation record
 
-Date: 24 October 2026. Package: ROS3-Limassol 0.3.0.
+Date: 24 October 2026. Package: ROS3-Limassol 0.3.1.
 
 ## Local implementation checks
 
@@ -53,6 +53,12 @@ The 0.3.0 recorder commit `ee71cdbbcbd6e8a718ec22d938bfd0f43f7ffaae`
 [passed four CI jobs](https://github.com/n0711/ROS3-Limassol/actions/runs/40053034634)
 on 24 October 2026. Jazzy reported 45 tests, zero errors, zero failures and zero
 skips. That run predates the Humble job and is evidence for Jazzy only.
+
+The first Humble run used Python 3.10.12 and built the package successfully,
+but all three ROS integration tests failed when importing the Jazzy-only
+`rclpy.clock_type` module. Version 0.3.1 uses the shared `rclpy.clock.ClockType`
+export instead. The Humble job must pass the same integration tests; it does
+not skip or relax them to accommodate the older distribution.
 
 These checks use synthetic observations. Real vessel behavior, wireless timing,
 synchronized capture age and field reliability remain unmeasured. The original
