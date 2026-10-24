@@ -96,3 +96,11 @@ the documentation does not establish that this project's ROS graph has passed.
 The recorder's node/timer/cleanup APIs were also checked against the official
 [Jazzy rclpy source](https://github.com/ros2/rclpy/blob/jazzy/rclpy/rclpy/node.py)
 on 24 October 2026. Executed checks are recorded in [VALIDATION.md](VALIDATION.md).
+
+The same adapter targets Humble on Ubuntu 22.04. Its timer, subscription and
+cleanup APIs were checked against the official
+[Humble rclpy source](https://github.com/ros2/rclpy/blob/humble/rclpy/rclpy/node.py)
+on 24 October 2026. Both versions support an explicit timer clock; the adapter
+uses no Jazzy-only `create_timer` arguments. Separate ROS CI jobs exercise the
+same package and test suite on each distribution. The standalone Python core
+and schema-v1 recording format are shared.

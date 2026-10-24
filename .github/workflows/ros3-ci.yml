@@ -68,3 +68,26 @@ jobs:
           ros2 launch ros3_limassol record_telemetry.launch.py --show-args
           colcon test --packages-select ros3_limassol --event-handlers console_direct+
           colcon test-result --verbose
+
+  ros-humble:
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test and launch tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-humble-launch-ros ros-humble-rclpy ros-humble-std-msgs
+      - name: Build ROS package and run the DDS tests
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 -c 'import platform; import rclpy; import launch_ros; import std_msgs; print(platform.python_version())'
+          colcon build --base-paths robotics --packages-select ros3_limassol --symlink-install
+          source install/setup.bash
+          ros2 launch ros3_limassol usv_demo.launch.py --show-args
+          ros2 launch ros3_limassol record_telemetry.launch.py --show-args
+          colcon test --packages-select ros3_limassol --event-handlers console_direct+
+          colcon test-result --verbose
