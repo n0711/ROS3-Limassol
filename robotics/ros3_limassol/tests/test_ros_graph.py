@@ -2,6 +2,8 @@
 
 import importlib.util
 import json
+from pathlib import Path
+import tempfile
 import time
 import unittest
 import uuid
@@ -11,6 +13,98 @@ HAS_ROS = importlib.util.find_spec("rclpy") is not None
 
 @unittest.skipUnless(HAS_ROS, "ROS 2 rclpy is not installed")
 class RosGraphTests(unittest.TestCase):
+    def test_dds_recording_replays_blackout_and_recovery(self):
+        import rclpy
+        from rclpy.executors import SingleThreadedExecutor
+        from rclpy.parameter import Parameter
+        from ros3_limassol.replay import run_replay
+        from ros3_limassol.ros_nodes import SimUsvNode, TelemetryRecorderNode
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "live.jsonl"
+            rclpy.init()
+            executor = SingleThreadedExecutor()
+            nodes = []
+            namespace = "/limassol_record_" + uuid.uuid4().hex[:8]
+            try:
+                publisher = SimUsvNode(namespace=namespace, parameter_overrides=[
+                    Parameter("rate_hz", value=20.0),
+                    Parameter("blackout_start_s", value=1000.0),
+                    Parameter("blackout_duration_s", value=0.0),
+                    Parameter("use_sim_time", value=True),
+                ])
+                nodes.append(publisher)
+                recorder = TelemetryRecorderNode(namespace=namespace, parameter_overrides=[
+                    Parameter("output_path", value=str(path)),
+                    Parameter("tick_period_s", value=0.05),
+                    Parameter("use_sim_time", value=True),
+                ])
+                nodes.append(recorder)
+                for node in nodes:
+                    executor.add_node(node)
+
+                def events():
+                    with path.open(encoding="utf-8") as stream:
+                        return list(run_replay(stream, stale_after_s=0.3))
+
+                def wait_for(predicate, seconds=8):
+                    deadline = time.monotonic() + seconds
+                    while time.monotonic() < deadline:
+                        executor.spin_once(timeout_sec=0.02)
+                        result = events()
+                        if predicate(result):
+                            return result
+                    self.fail(f"live recording timeout; replayed {events()}")
+
+                wait_for(lambda trace: trace[-1]["accepted"] >= 3)
+                publisher.timer.cancel()
+                stopped = wait_for(lambda trace: trace[-1]["state"] == "STALE")
+                accepted_before_recovery = stopped[-1]["accepted"]
+                publisher.timer.reset()
+                recovered = wait_for(lambda trace: trace[-1]["state"] == "HEALTHY"
+                                     and trace[-1]["accepted"] > accepted_before_recovery)
+                self.assertEqual([item["state"] for item in recovered[:-1]],
+                                 ["WAITING", "HEALTHY", "STALE", "HEALTHY"])
+                self.assertEqual(recovered[-1]["rejected"], 0)
+                lines = [json.loads(line) for line in path.read_text().splitlines()]
+                self.assertTrue(any(line["payload"] is None and line["time_s"] > 0
+                                    for line in lines))
+            finally:
+                executor.shutdown()
+                for node in reversed(nodes):
+                    node.destroy_node()
+                if rclpy.ok():
+                    rclpy.shutdown()
+            self.assertTrue(recorder.recorder.closed)
+            self.assertEqual(events()[-1]["state"], "HEALTHY")
+
+    def test_recorder_invalid_configuration_and_existing_file_protection(self):
+        import rclpy
+        from rclpy.parameter import Parameter
+        from ros3_limassol.ros_nodes import TelemetryRecorderNode
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "live.jsonl"
+            rclpy.init()
+            try:
+                for period in (0.0, -1.0, 61.0):
+                    with self.subTest(period=period), self.assertRaises(ValueError):
+                        TelemetryRecorderNode(parameter_overrides=[
+                            Parameter("output_path", value=str(path)),
+                            Parameter("tick_period_s", value=period),
+                        ])
+                    self.assertFalse(path.exists())
+                with self.assertRaisesRegex(ValueError, "output_path"):
+                    TelemetryRecorderNode()
+                path.write_text("keep", encoding="utf-8")
+                with self.assertRaises(FileExistsError):
+                    TelemetryRecorderNode(parameter_overrides=[
+                        Parameter("output_path", value=str(path)),
+                    ])
+                self.assertEqual(path.read_text(), "keep")
+            finally:
+                rclpy.shutdown()
+
     def test_dds_blackout_and_recovery(self):
         import rclpy
         from rclpy.executors import SingleThreadedExecutor
