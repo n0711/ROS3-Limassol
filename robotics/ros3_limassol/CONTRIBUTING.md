@@ -3,8 +3,10 @@
 Start with a reproducible problem, a small change, and a clear explanation of the
 result. Discuss new transports or major interfaces before implementing them.
 
-Use Python 3.10 or newer for core work. The initial ROS adapter target is Jazzy
-on Ubuntu 24.04. The core must remain importable and runnable without ROS.
+Use Python 3.10 or newer for core work. ROS adapter targets are Humble on Ubuntu
+22.04 (system Python 3.10) and Jazzy on Ubuntu 24.04 (system Python 3.12).
+Keep their workspaces and sourced environments separate. The core must remain
+importable and runnable without ROS.
 
 Before opening a pull request:
 
@@ -14,8 +16,9 @@ python -m ros3_limassol.demo
 python -m compileall -q ros3_limassol launch tests
 ```
 
-For a transport change, also run the ROS graph test in a sourced ROS environment
-and run the launch file. State every skipped or unavailable check. Changing a
+For a transport change, run the ROS graph tests against both supported
+distributions through CI or separate sourced ROS workspaces, and run the launch
+file. State every skipped or unavailable check. Changing a
 telemetry field or its meaning requires updating the schema document and tests.
 
 Contributions use the project's Apache-2.0 license. Do not include private logs,

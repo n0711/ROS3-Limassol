@@ -29,7 +29,11 @@ Date: 24 October 2026. Package: ROS3-Limassol 0.3.0.
 The local environment has no ROS installation or container engine. The
 [workflow](https://github.com/n0711/ROS3-Limassol/actions/workflows/ros3-ci.yml)
 defines Linux/Python 3.10 and 3.12, Windows/Python 3.12, installed-wheel checks and
-a Jazzy package build with a DDS blackout/recovery test. Check each actual job
+a Jazzy package build with a DDS blackout/recovery test. A separate Humble job
+uses Ubuntu 22.04, `ros:humble-ros-base` and its system Python 3.10. Both ROS jobs
+build the package, inspect both launch files and run the same 45-test suite,
+including the DDS recording/replay and parameter/file-protection cases.
+Check each actual job
 result; configuration alone does not establish that a platform passed.
 
 The pre-change 0.2.0 main commit `764e1533e1903c04b0a50e02ab1eff41e20c593c`
@@ -42,7 +46,13 @@ for received traffic before cancelling the publisher timer, checks STALE from
 independent ticks, restores publication and checks HEALTHY recovery. Simulation
 time is enabled without a `/clock` publisher to exercise the steady timer.
 A separate ROS test checks invalid parameters and existing-file protection.
-Local ROS execution remains unavailable; see the PR's actual Jazzy job result.
+Local ROS execution remains unavailable; see the PR's actual Humble and Jazzy
+job results. Adding a job is not itself a successful Humble execution.
+
+The 0.3.0 recorder commit `ee71cdbbcbd6e8a718ec22d938bfd0f43f7ffaae`
+[passed four CI jobs](https://github.com/n0711/ROS3-Limassol/actions/runs/40053034634)
+on 24 October 2026. Jazzy reported 45 tests, zero errors, zero failures and zero
+skips. That run predates the Humble job and is evidence for Jazzy only.
 
 These checks use synthetic observations. Real vessel behavior, wireless timing,
 synchronized capture age and field reliability remain unmeasured. The original

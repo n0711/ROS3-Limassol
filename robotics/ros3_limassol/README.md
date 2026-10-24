@@ -22,6 +22,38 @@ Use `python -m ros3_limassol.demo --help` for duration, rate, timeout and blacko
 options. Replay supports `--robot-id`, `--stale-after` and `--json`. See the
 [recording format](docs/RECORDING.md) before supplying your own trace.
 
+## ROS 2 Humble on Ubuntu 22.04
+
+Install [Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)
+and the standard ROS development tools separately. Use the system Python 3.10
+from this ROS installation. From the **repository root**, in a fresh workspace:
+
+```bash
+source /opt/ros/humble/setup.bash
+rosdep install --from-paths robotics --ignore-src --rosdistro humble -y
+colcon build --base-paths robotics --packages-select ros3_limassol --symlink-install
+source install/setup.bash
+ros2 launch ros3_limassol usv_demo.launch.py
+```
+
+In a second terminal at the same repository root:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
+```
+
+Stop the recorder with Ctrl+C and replay from that root:
+
+```bash
+python3 -m ros3_limassol.replay run.jsonl --json
+```
+
+Use separate workspaces/checkouts for Humble and Jazzy. Their sourced
+environments and generated `build/`, `install/` and `log/` trees are not
+interchangeable. Do not source both distributions in the same terminal.
+
 ## ROS 2 Jazzy on Ubuntu 24.04
 
 Install Jazzy and the standard ROS development tools separately. From the
@@ -62,7 +94,7 @@ liveness. No hard scheduling bound is established.
 ## Record a live ROS stream
 
 After building, run the demo above or an existing schema-v1 telemetry publisher.
-In a second terminal with Jazzy and `install/setup.bash` sourced:
+In a second terminal with the same ROS distribution and `install/setup.bash` sourced:
 
 ```bash
 ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
@@ -119,8 +151,10 @@ colcon test --packages-select ros3_limassol --event-handlers console_direct+
 colcon test-result --verbose
 ```
 
-The Jazzy CI job performs the same package build, launch-argument inspection and
-DDS blackout/recovery test. Consult actual job results and the [validation record](docs/VALIDATION.md).
+The Humble and Jazzy CI jobs each build the package, inspect both launch files,
+and run all 45 tests, including DDS blackout/recovery, live recording/replay and
+recorder configuration/file-protection tests. Consult actual job results and the
+[validation record](docs/VALIDATION.md).
 
 The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
 0.1.0. Offline recording/replay were added in 0.2.0; live ROS recording in 0.3.0.

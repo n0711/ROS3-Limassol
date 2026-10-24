@@ -50,7 +50,7 @@ observations. Recording creates a new file and refuses to overwrite one.
 - A synthetic USV source and a repeatable blackout/recovery scenario.
 - Streaming JSONL recording/replay, including malformed-payload rejections.
 - A receive-only ROS telemetry recorder with independent silence ticks and new-file protection.
-- An optional ROS 2 Jazzy publisher/observer adapter and launch file.
+- An optional ROS 2 Humble/Jazzy publisher, observer and recorder adapter.
 - Core, packaging and ROS graph checks in [GitHub Actions](https://github.com/n0711/ROS3-Limassol/actions/workflows/ros3-ci.yml).
 
 `HEALTHY` means accepted telemetry arrived recently. It does not establish sensor
@@ -81,7 +81,8 @@ From the package directory:
 python -m unittest discover -s tests -v
 ```
 
-The optional transport targets Jazzy on Ubuntu 24.04. The [package guide](robotics/ros3_limassol/README.md)
+The optional transport targets Humble on Ubuntu 22.04 and Jazzy on Ubuntu 24.04.
+The [package guide](robotics/ros3_limassol/README.md)
 contains build, launch, topic-inspection and test commands. See the
 [architecture](robotics/ros3_limassol/docs/ARCHITECTURE.md),
 [telemetry contract](robotics/ros3_limassol/docs/TELEMETRY.md),
