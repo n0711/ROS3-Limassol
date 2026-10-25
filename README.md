@@ -4,6 +4,7 @@ An **OpenPELAOS** project for telemetry arrival-liveness monitoring in intermitt
 
 **Project lead and paper author:** [Charalampos Nadiotis](https://github.com/n0711).
 **Initial project idea:** [Christos Paparistodemou](https://www.researchgate.net/profile/Christos-Paparistodemou).
+**PELAOS research overview:** https://n0711.github.io/pelaos-tech/ros3-limassol/ — source, credits, validation limits and links to the preliminary report.
 
 [ResearchGate edition (PDF)](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.pdf) · [Manuscript licence](docs/papers/MANUSCRIPT_LICENCE.md) · [Original paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) · [arXiv preparation](docs/papers/ARXIV.md) · [Updated manuscript (PDF)](docs/papers/ROS3_Limassol_arxiv_preparation.pdf) · [Package guide](robotics/ros3_limassol/README.md) · [Recording format](robotics/ros3_limassol/docs/RECORDING.md) · [Validation](robotics/ros3_limassol/docs/VALIDATION.md)
 
