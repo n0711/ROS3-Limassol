@@ -90,3 +90,13 @@ def read_observations(stream):
             raise ValueError(f"line {index + 1}: {exc}") from exc
         previous = record.time_s
         yield record
+
+
+class Utf8Lines:
+    """Decode bounded binary lines without reading ahead into later records."""
+
+    def __init__(self, stream):
+        self.stream = stream
+
+    def readline(self, limit):
+        return self.stream.readline(limit).decode("utf-8")
