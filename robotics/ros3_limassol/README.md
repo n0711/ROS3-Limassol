@@ -22,6 +22,23 @@ Use `python -m ros3_limassol.demo --help` for duration, rate, timeout and blacko
 options. Replay supports `--robot-id`, `--stale-after` and `--json`. See the
 [recording format](docs/RECORDING.md) before supplying your own trace.
 
+## Offline evidence report
+
+For an existing version-1 receiver recording (synthetic or a receive-only ROS
+recording), create a machine-readable report **without a ROS installation**:
+
+```sh
+python -m ros3_limassol.evidence run.jsonl --robot-id usv01 --stale-after 1.0 > evidence.json
+```
+
+The command validates the whole file before printing JSON, includes the source
+SHA-256 digest, counts received payloads and silence ticks, reports accepted and
+rejected messages, and records **observed** link-state transitions and recoveries.
+It neither republishes telemetry nor sends vehicle commands. SHA-256 identifies
+the exact input bytes; it does not authenticate the recording or establish its
+provenance. A failed read emits no JSON report. See the
+[evidence specification](docs/EVIDENCE.md) for interpretation and limitations.
+
 ## ROS 2 Humble on Ubuntu 22.04
 
 Install [Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)
