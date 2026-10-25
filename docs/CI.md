@@ -35,6 +35,30 @@ The GitLab jobs use container images; they do not deploy software, access secret
 publish artifacts, or attempt vehicle control. GitLab and GitHub job triggers differ:
 compare observed outcomes rather than treating a configured job as a passing test.
 
+## Automated offline checks (GitHub Actions)
+
+[GitHub Actions: Validate optional GitLab CI configuration](../.github/workflows/gitlab-ci-smoke.yml)
+runs when the mirror YAML, validator, its tests or the workflow are changed.
+The validator parses the YAML with duplicate-key detection and verifies that the
+eight expected jobs still contain their baseline test/build commands, container
+image names and execution stages. Regression tests verify that representative
+configuration mistakes are rejected.
+
+To run the same **offline smoke test** locally from the repository root:
+
+```bash
+python -m pip install PyYAML==6.0.2
+python tools/validate_gitlab_ci.py
+python -m unittest discover -s tests -p 'test_gitlab_ci_config.py' -v
+```
+
+This is an intentionally limited repository-specific contract check. It does
+**not** implement the full GitLab CI schema, expand includes, interpret runner
+semantics or establish that GitLab accepts the configuration. For a real GitLab
+mirror, run GitLab's **CI Lint** with project context and execute the pipeline
+on a GitLab runner before claiming operational success. GitHub checks provide
+pre-merge safety for the mirror configuration only.
+
 ## Validation before performance claims
 
 Successful CI verifies software behavior in automated environments, not actual
