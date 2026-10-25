@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json
+# Optional GitLab CI pipeline for a GitLab mirror of this GitHub repository.
+# GitHub Actions remains the primary CI for n0711/ROS3-Limassol.
+stages:
+  - verify
+  - integration
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  CARGO_TERM_COLOR: "always"
+
+ros3-python-310:
+  stage: verify
+  image: python:3.10-bookworm
+  script:
+    - cd robotics/ros3_limassol
+    - python -m unittest discover -s tests -v
+    - python -m ros3_limassol.demo
+    - python -m compileall -q ros3_limassol launch tests tools
+    - python -m pip install setuptools wheel
+    - python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+    - python tools/check_wheel.py
+
+ros3-python-312:
+  stage: verify
+  image: python:3.12-bookworm
+  script:
+    - cd robotics/ros3_limassol
+    - python -m unittest discover -s tests -v
+    - python -m ros3_limassol.demo
+    - python -m compileall -q ros3_limassol launch tests tools
+    - python -m pip install setuptools wheel
+    - python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+    - python tools/check_wheel.py
+
+ros3-rust:
+  stage: verify
+  image: rust:1-bookworm
+  script:
+    - apt-get update && apt-get install -y --no-install-recommends python3
+    - rustup component add rustfmt clippy
+    - cargo fmt --manifest-path robotics/ros3_core/Cargo.toml --check
+    - cargo clippy --locked --manifest-path robotics/ros3_core/Cargo.toml --all-targets -- -D warnings
+    - cargo test --locked --manifest-path robotics/ros3_core/Cargo.toml
+    - cargo build --locked --manifest-path robotics/ros3_core/Cargo.toml
+    - python3 robotics/ros3_core/tests/parity.py robotics/ros3_core/target/debug/ros3-core
+
+academic-python:
+  stage: verify
+  image: python:3.12-bookworm
+  script:
+    - python -m pip install -r requirements.txt
+    - python -m pytest -q
+
+academic-rust:
+  stage: verify
+  image: rust:1-bookworm
+  script:
+    - cargo test --manifest-path backend/academic_store/Cargo.toml
+
+learntwin-frontend:
+  stage: verify
+  image: node:22-bookworm
+  script:
+    - cd frontend
+    - npm ci
+    - npm test
+    - npm run lint
+    - npm run build
+
+ros2-humble:
+  stage: integration
+  image: ros:humble-ros-base
+  script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-humble-launch-ros ros-humble-rclpy ros-humble-std-msgs
+    - source /opt/ros/humble/setup.bash
+    - python3 -c 'import rclpy; import launch_ros; import std_msgs'
+    - colcon build --base-paths robotics --packages-select ros3_limassol --symlink-install
+    - source install/setup.bash
+    - ros2 launch ros3_limassol usv_demo.launch.py --show-args
+    - ros2 launch ros3_limassol record_telemetry.launch.py --show-args
+    - colcon test --packages-select ros3_limassol --event-handlers console_direct+
+    - colcon test-result --verbose
+
+ros2-jazzy:
+  stage: integration
+  image: ros:jazzy-ros-base
+  script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-jazzy-launch-ros ros-jazzy-rclpy ros-jazzy-std-msgs
+    - source /opt/ros/jazzy/setup.bash
+    - python3 -c 'import rclpy; import launch_ros; import std_msgs'
+    - colcon build --base-paths robotics --packages-select ros3_limassol --symlink-install
+    - source install/setup.bash
+    - ros2 launch ros3_limassol usv_demo.launch.py --show-args
+    - ros2 launch ros3_limassol record_telemetry.launch.py --show-args
+    - colcon test --packages-select ros3_limassol --event-handlers console_direct+
+    - colcon test-result --verbose
