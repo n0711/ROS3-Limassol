@@ -110,3 +110,9 @@ The ROS3-Limassol package uses [Apache-2.0](robotics/ros3_limassol/LICENSE), wit
 attribution in [NOTICE](robotics/ros3_limassol/NOTICE). Existing LearnTwin material
 retains the repository's [MIT license](LICENSE).
 
+
+## Support this project
+
+If this project is useful to you, you can support its development with a one-off contribution via Revolut:
+
+**[revolut.me/nadiotis](https://revolut.me/nadiotis)**
