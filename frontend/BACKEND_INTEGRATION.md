@@ -96,3 +96,5 @@ The reflection dashboard reads mock data. The live dashboard simulates updates e
 ## Public deployment boundary
 
 The frontend key is readable by users. There are no per-user roles, per-class permissions or authenticated session creation. Add those controls before using real classroom records on a public service. Run the backend with durable SQLite storage and backups, configure HTTPS and exact allowed origins, and exclude development reload mode.
+
+The academic request helper preserves `X-API-Key` when JSON headers are supplied, including current-course synchronization. This remains a browser-visible development key, not per-user authentication.

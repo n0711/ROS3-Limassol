@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import {withApiKey} from './requestHeaders';
 
 // Local development only: the shared browser-visible key is not production authentication.
 const BASE=(import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/,'');
@@ -6,7 +7,7 @@ const KEY=import.meta.env.VITE_API_KEY || 'devkey';
 async function request(path, options={}) {
   let response;
   try {
-    response=await fetch(`${BASE}/academic${path}`, {headers:{'X-API-Key':KEY,...options.headers},...options});
+    response=await fetch(`${BASE}/academic${path}`, withApiKey(options, KEY));
   } catch {throw Error('Cannot reach the local FastAPI server. Start the backend on port 8000.');}
   let payload;
   try {payload=await response.json();} catch {throw Error(`Unexpected API response (${response.status}).`);}
