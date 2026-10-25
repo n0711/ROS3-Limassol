@@ -43,6 +43,13 @@ ticks preserve observations during silence, including after the last message.
 Replay does not invent evaluations in missing intervals. Empty files produce
 WAITING with zero accepted/rejected messages.
 
+## Offline analysis report
+
+After creating an existing version-1 recording, you can produce a read-only
+[receiver-observation evidence report](EVIDENCE.md) with
+`python -m ros3_limassol.evidence run.jsonl`. This is a deterministic summary
+of observation and monitor state, not a network-performance measurement.
+
 ## Limits and interpretation
 
 - Each line is bounded to 32768 UTF-8 bytes, including any line ending.
