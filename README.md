@@ -44,6 +44,22 @@ Recording includes silent observation ticks during the blackout. Replay uses the
 recorded receiver-relative clock and can compare timeout choices against the same
 observations. Recording creates a new file and refuses to overwrite one.
 
+## Export offline telemetry evidence
+
+Summarize an existing receiver-observation recording without ROS:
+
+```sh
+cd robotics/ros3_limassol
+python -m ros3_limassol.demo --record run.jsonl
+python -m ros3_limassol.evidence run.jsonl --robot-id usv01 > evidence.json
+```
+
+The generated report contains a SHA-256 recording fingerprint, accepted/rejected
+counts and observed stale/recovery transitions, but not the original telemetry.
+It does **not** establish network delay, delivery reliability, actual
+sensor freshness or field performance. See the
+[offline evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
+
 ## Current implementation
 
 - Strict version-1 JSON telemetry with explicit units and bounded payloads.
