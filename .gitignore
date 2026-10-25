@@ -24,3 +24,7 @@ backend/academic_store/target/
 /robotics/ros3_limassol/build/
 /robotics/ros3_limassol/dist/
 /robotics/ros3_limassol/*.jsonl
+
+# ROS3 Rust core output and local authentication keys
+/robotics/ros3_core/target/
+*.ros3-key

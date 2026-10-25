@@ -1,0 +1,8 @@
+ROS3-Limassol
+An OpenPELAOS project developed under n0711 (Charalampos Nadiotis).
+Initial project idea: Christos Paparistodemou.
+Copyright 2026 OpenPELAOS contributors.
+
+ROS3-Limassol is independently developed. The project name is not an
+official ROS release designation. ROS 2 is the upstream robotics middleware
+used by the optional transport adapter.

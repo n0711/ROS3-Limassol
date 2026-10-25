@@ -88,6 +88,15 @@ contains build, launch, topic-inspection and test commands. See the
 [telemetry contract](robotics/ros3_limassol/docs/TELEMETRY.md),
 [roadmap](robotics/ros3_limassol/docs/ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
+## Experimental Rust core
+
+[`robotics/ros3_core/`](robotics/ros3_core/README.md) adds a Rust telemetry validator,
+arrival monitor and streaming replay CLI. It preserves the telemetry-v1 contract
+and offers optional HMAC-SHA256 envelopes with no unsigned fallback in keyed mode.
+Differential tests compare replay states against the Python implementation. The
+existing ROS adapter remains Python and does not yet support the signed envelope.
+This is not a ROS replacement or a measured performance claim.
+
 ## Existing LearnTwin components
 
 This repository was initialized with LearnTwin files. They remain under
