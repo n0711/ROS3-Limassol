@@ -17,7 +17,7 @@ def main():
     wheel = wheels[0]
     with zipfile.ZipFile(wheel) as archive:
         members = archive.namelist()
-        for suffix in ("ros3_limassol/replay.py", "ros3_limassol/recording.py",
+        for suffix in ("ros3_limassol/analyze.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
                        "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/package.xml", "/LICENSE",
                        "/NOTICE", "/resource_index/packages/ros3_limassol"):
@@ -39,6 +39,12 @@ def main():
         ], cwd=root, env=env, text=True)
         if demo != replay:
             raise RuntimeError("installed record/replay output differs")
+        analysis = json.loads(subprocess.check_output([
+            sys.executable, "-m", "ros3_limassol.analyze", str(recording),
+        ], cwd=root, env=env, text=True))
+        if (analysis["observations"] != 81 or analysis["accepted"] != 51 or
+                analysis["stale_entries"] != 1 or analysis["recoveries"] != 1):
+            raise RuntimeError("installed analysis did not reproduce the scenario")
         events = [json.loads(line) for line in demo.splitlines()]
         if events[-1]["accepted"] != 51 or events[-1]["rejected"] != 0:
             raise RuntimeError("installed demo did not reproduce the paper's counts")

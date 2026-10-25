@@ -26,6 +26,7 @@ setup(
         "console_scripts": [
             "limassol_demo = ros3_limassol.demo:main",
             "limassol_replay = ros3_limassol.replay:main",
+            "limassol_analyze = ros3_limassol.analyze:main",
             "sim_usv = ros3_limassol.ros_nodes:sim_main",
             "link_monitor = ros3_limassol.ros_nodes:monitor_main",
             "telemetry_recorder = ros3_limassol.ros_nodes:recorder_main",

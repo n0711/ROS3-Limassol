@@ -43,7 +43,33 @@ ticks preserve observations during silence, including after the last message.
 Replay does not invent evaluations in missing intervals. Empty files produce
 WAITING with zero accepted/rejected messages.
 
-## Limits and interpretation
+## Analyze a recording
+
+```sh
+python -m ros3_limassol.analyze run.jsonl
+python -m ros3_limassol.analyze run.jsonl --stale-after 2.0
+```
+
+The installed command is `limassol_analyze`. It emits one JSON report after the
+whole recording validates, with message acceptance counts, silence ticks, stale
+entries, recoveries, final state, maximum observation gap and state durations.
+Memory use is independent of recording length (subject to the monitor's bounded
+session history). Invalid input exits with status 2 and emits no partial report.
+
+`state_hold_duration_s` holds each observed state until the next recorded time.
+Only the first-to-last observation span is counted; there is no inferred prefix,
+suffix or intermediate timeout evaluation. The default demo has 2.1 seconds held
+STALE, one stale entry and one recovery. This is not the three-second simulated
+blackout duration, network availability or a measured recovery latency.
+
+For example, healthy at time 10 followed by a silence tick at time 20 attributes
+ten seconds to the previously observed HEALTHY state, and ends STALE with zero
+measured stale duration. That sparse trace cannot locate the earlier transition.
+Use `max_observation_gap_s` to assess this observation limitation. A final stale
+state sets `final_stale_unresolved`; its future duration is unknown. Empty traces
+have null first/last times and a zero observation span.
+
+## Bounds
 
 - Each line is bounded to 32768 UTF-8 bytes, including any line ending.
 - Non-null payloads are bounded to 4096 UTF-8 bytes, matching the core contract.

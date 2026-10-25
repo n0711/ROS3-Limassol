@@ -1,5 +1,13 @@
 # Validation record
 
+## Recording analysis follow-up, 25 October 2026
+
+53 tests discovered: 50 passed and three ROS tests skipped locally. Six new
+analysis tests cover the default blackout, sparse ticks, rejected arrivals, empty
+and silent traces, equal timestamps, timeout changes and all-or-nothing CLI output.
+The installed-wheel check also runs the analyzer outside the source tree and
+verifies its scenario counts. No new ROS or physical-link execution is claimed.
+
 ## Recording input validation follow-up, 25 October 2026
 
 The local suite discovers 47 tests: 44 pass and three ROS integration tests are
