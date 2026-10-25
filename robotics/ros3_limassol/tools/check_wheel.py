@@ -17,7 +17,7 @@ def main():
     wheel = wheels[0]
     with zipfile.ZipFile(wheel) as archive:
         members = archive.namelist()
-        for suffix in ("ros3_limassol/replay.py", "ros3_limassol/recording.py",
+        for suffix in ("ros3_limassol/evidence.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
                        "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/package.xml", "/LICENSE",
                        "/NOTICE", "/resource_index/packages/ros3_limassol"):
@@ -39,6 +39,15 @@ def main():
         ], cwd=root, env=env, text=True)
         if demo != replay:
             raise RuntimeError("installed record/replay output differs")
+        evidence_json = subprocess.check_output([
+            sys.executable, "-m", "ros3_limassol.evidence", str(recording),
+        ], cwd=root, env=env, text=True)
+        evidence = json.loads(evidence_json)
+        if (evidence["observation_count"] != 81 or
+                evidence["accepted"] != 51 or evidence["rejected"] != 0 or
+                evidence["silence_tick_count"] != 30 or
+                evidence["observed_stale_to_healthy_recoveries"] != 1):
+            raise RuntimeError("installed evidence report did not match the experiment")
         events = [json.loads(line) for line in demo.splitlines()]
         if events[-1]["accepted"] != 51 or events[-1]["rejected"] != 0:
             raise RuntimeError("installed demo did not reproduce the paper's counts")
@@ -60,7 +69,7 @@ with LiveRecorder("live.jsonl", clock=lambda: now[0]) as recorder:
         live_events = [json.loads(line) for line in live.splitlines()]
         if live_events[-1]["state"] != "STALE" or live_events[-1]["accepted"] != 1:
             raise RuntimeError("installed live recorder did not preserve silence")
-        print("Installed wheel: demo replay matched; live recording preserved silence")
+        print("Installed wheel: demo replay and evidence matched; live recording preserved silence")
 
 
 if __name__ == "__main__":
