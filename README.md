@@ -90,6 +90,18 @@ contains build, launch, topic-inspection and test commands. See the
 [telemetry contract](robotics/ros3_limassol/docs/TELEMETRY.md),
 [roadmap](robotics/ros3_limassol/docs/ROADMAP.md) and [contributor guide](CONTRIBUTING.md).
 
+## CI/CD and editor validation
+
+This GitHub repository uses [GitHub Actions](.github/workflows/) for its existing
+automated checks. An [optional GitLab mirror pipeline](.gitlab-ci.yml) covers the
+Python telemetry core, Rust core, ROS 2 Humble and Jazzy adapters, LearnTwin
+frontend, and academic backend. GitLab's official CI JSON Schema is associated
+with that YAML file for supported editors; the schema does not execute any jobs.
+
+See the [CI/CD coverage and validation guide](docs/CI.md) for configuration,
+GitLab runner requirements, and the difference between synthetic tests and
+field-validation evidence.
+
 ## Experimental Rust core
 
 [`robotics/ros3_core/`](robotics/ros3_core/README.md) adds a Rust telemetry validator,
