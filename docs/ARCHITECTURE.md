@@ -38,3 +38,11 @@ The remaining-credit estimate subtracts explicitly passed credits from an editab
 - CORS currently permits only `http://localhost:5173` and `http://localhost:5174`.
 
 Deploying the static planner does not deploy the classroom service. Public classroom operation needs authentication, access control, appropriate origins and durable database management. The shared browser-visible API key does not provide individual authorization.
+
+## Recommendation selection
+
+Recommendation selection uses a stable heap-based top-k over candidate streams.
+For k < n, ranking costs O(n log(k + 1)) time with O(k + s) auxiliary space,
+where s is the number of distinct valid skills cached during the call. Full
+results still require O(n log n) work. Mastery scoring, malformed-row filtering,
+and input order for equal ranking keys are covered by equivalence tests.
