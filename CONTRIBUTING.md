@@ -48,6 +48,15 @@ Also run `git diff --check`. Record existing failures separately from regression
 - Preserve unknown values instead of inventing grades, dates, funding, completed work or eligibility.
 - Describe planned behavior as planned. Keep setup commands aligned with the files and scripts that actually exist.
 
+## CI configuration changes
+
+GitHub Actions is the canonical CI for this GitHub repository. The optional
+[GitLab mirror configuration](.gitlab-ci.yml) uses the
+[GitLab CI JSON Schema](https://gitlab.com/gitlab-org/gitlab/-/blob/master/app/assets/javascripts/editor/schema/ci.json)
+for editor support. When changing the GitLab pipeline, run GitLab CI Lint
+in the destination GitLab project and, if available, a real runner before
+claiming successful execution. See [docs/CI.md](docs/CI.md).
+
 ## Reports
 
 Use a repository issue with reproduction steps, expected/actual results, branch or commit and relevant runtime versions. Remove personal data and credentials from logs and screenshots. Use synthetic examples for API and backup problems.
