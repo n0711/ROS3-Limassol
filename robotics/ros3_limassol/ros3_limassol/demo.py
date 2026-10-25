@@ -13,10 +13,9 @@ from .simulator import UsvSimulator
 from .telemetry import finite_number
 
 
-def run_demo(duration_s=8.0, rate_hz=10.0, stale_after_s=1.0,
-             blackout_start_s=2.0, blackout_duration_s=3.0, realtime=False,
-             record_to=None):
-    """Yield status transitions using virtual time, or pace them in real time."""
+def _configure_demo(duration_s, rate_hz, stale_after_s,
+                    blackout_start_s, blackout_duration_s):
+    """Validate all options before a CLI recording file is created."""
     duration_s = finite_number(duration_s, "duration_s")
     rate_hz = finite_number(rate_hz, "rate_hz")
     if not 0 < duration_s <= 3600 or not 0 < rate_hz <= 1000:
@@ -27,6 +26,20 @@ def run_demo(duration_s=8.0, rate_hz=10.0, stale_after_s=1.0,
     sim = UsvSimulator(blackout_start_s=blackout_start_s,
                        blackout_duration_s=blackout_duration_s,
                        session_id="deterministic_demo")
+    return duration_s, rate_hz, monitor, sim
+
+
+def run_demo(duration_s=8.0, rate_hz=10.0, stale_after_s=1.0,
+             blackout_start_s=2.0, blackout_duration_s=3.0, realtime=False,
+             record_to=None):
+    """Yield status transitions using virtual time, or pace them in real time."""
+    configuration = _configure_demo(duration_s, rate_hz, stale_after_s,
+                                    blackout_start_s, blackout_duration_s)
+    return _run_demo(configuration, realtime, record_to)
+
+
+def _run_demo(configuration, realtime, record_to):
+    duration_s, rate_hz, monitor, sim = configuration
     previous = "WAITING"
     yield {"time_s": 0.0, **asdict(monitor.snapshot(0.0))}
     started = time.monotonic()
@@ -59,16 +72,14 @@ def main(args=None):
     parser.add_argument("--blackout-duration", type=float, default=3.0)
     options = parser.parse_args(args)
     try:
+        configuration = _configure_demo(
+            options.duration, options.rate, options.stale_after,
+            options.blackout_start, options.blackout_duration,
+        )
         with ExitStack() as stack:
             stream = (stack.enter_context(open(options.record, "x", encoding="utf-8", newline="\n"))
                       if options.record else None)
-            for event in run_demo(
-                duration_s=options.duration, rate_hz=options.rate,
-                stale_after_s=options.stale_after,
-                blackout_start_s=options.blackout_start,
-                blackout_duration_s=options.blackout_duration,
-                realtime=options.realtime, record_to=stream,
-            ):
+            for event in _run_demo(configuration, options.realtime, stream):
                 if options.json:
                     print(json.dumps(event, allow_nan=False, separators=(",", ":")))
                 elif event.get("event") == "summary":

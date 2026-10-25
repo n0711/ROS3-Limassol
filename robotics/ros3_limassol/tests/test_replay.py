@@ -19,6 +19,23 @@ def trace(*observations):
 
 
 class ReplayTests(unittest.TestCase):
+    def test_cli_invalid_utf8_reports_actual_record_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "damaged.jsonl"
+            for prefix, expected_line in ((b"", 1),
+                    ((Observation(0, None).to_json() + "\n").encode(), 2)):
+                with self.subTest(expected_line=expected_line):
+                    path.write_bytes(prefix + b"\xff\n")
+                    errors = io.StringIO()
+                    with contextlib.redirect_stdout(io.StringIO()), \
+                            contextlib.redirect_stderr(errors):
+                        with self.assertRaises(SystemExit) as error:
+                            replay_main([str(path)])
+                    self.assertEqual(error.exception.code, 2)
+                    self.assertIn(f"line {expected_line}: recording must be UTF-8",
+                                  errors.getvalue())
+                    self.assertNotIn("Traceback", errors.getvalue())
+
     def test_recorded_blackout_reproduces_every_demo_event(self):
         stream = io.StringIO()
         expected = list(run_demo(record_to=stream))
