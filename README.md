@@ -5,7 +5,9 @@ An **OpenPELAOS** project for telemetry arrival-liveness monitoring in intermitt
 **Project lead and paper author:** [Charalampos Nadiotis](https://github.com/n0711).
 **Initial project idea:** [Christos Paparistodemou](https://www.researchgate.net/profile/Christos-Paparistodemou).
 
-[Original paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) · [arXiv preparation](docs/papers/ARXIV.md) · [Updated manuscript (PDF)](docs/papers/ROS3_Limassol_arxiv_preparation.pdf) · [Package guide](robotics/ros3_limassol/README.md) · [Recording format](robotics/ros3_limassol/docs/RECORDING.md) · [Validation](robotics/ros3_limassol/docs/VALIDATION.md)
+[ResearchGate edition (PDF)](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.pdf) · [Manuscript licence](docs/papers/MANUSCRIPT_LICENCE.md) · [Original paper (PDF)](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) · [arXiv preparation](docs/papers/ARXIV.md) · [Updated manuscript (PDF)](docs/papers/ROS3_Limassol_arxiv_preparation.pdf) · [Package guide](robotics/ros3_limassol/README.md) · [Recording format](robotics/ros3_limassol/docs/RECORDING.md) · [Validation](robotics/ros3_limassol/docs/VALIDATION.md)
+
+The ResearchGate edition dated **25 October 2026** is a preliminary technical report and has not been peer reviewed. Its [editable XeLaTeX source](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.tex) is included. **Military use of the licensed manuscript and its adaptations is prohibited.** The custom licence applies to that manuscript edition; the software licences are listed below.
 
 ## Run the prototype
 
@@ -109,6 +111,15 @@ under `robotics/ros3_limassol/` with its own package and test configuration.
 The ROS3-Limassol package uses [Apache-2.0](robotics/ros3_limassol/LICENSE), with
 attribution in [NOTICE](robotics/ros3_limassol/NOTICE). Existing LearnTwin material
 retains the repository's [MIT license](LICENSE).
+
+The [ResearchGate manuscript edition](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.pdf) and its
+[XeLaTeX source](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.tex) use the
+[**Civilian-Use Licence (No Military Use), Version 1.0**](docs/papers/MANUSCRIPT_LICENCE.md).
+Civilian reuse, including commercial civilian reuse, is permitted with attribution,
+retention of the licence and idea credit, and identification of changes.
+Military use of the licensed manuscript or its adaptations is prohibited.
+These custom manuscript terms do not amend the software's Apache-2.0 or MIT
+licences or revoke previously granted rights.
 
 
 ## Support this project

@@ -1,0 +1,447 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=25mm,headheight=15pt]{geometry}
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+% Load TeX Live fonts by filename: arXiv has limited fontconfig registration.
+\setmainfont{lmroman10-regular.otf}[
+BoldFont=lmroman10-bold.otf,ItalicFont=lmroman10-italic.otf,
+BoldItalicFont=lmroman10-bolditalic.otf]
+\setmonofont[Scale=0.88]{lmmono10-regular.otf}
+\usepackage{amsmath,unicode-math,microtype,enumitem,titlesec,fancyhdr,xurl}
+\setmathfont{latinmodern-math.otf}
+\usepackage[hidelinks,unicode]{hyperref}
+\usepackage{hyperxmp}
+\hypersetup{pdftitle={ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring},
+pdfauthor={Charalampos Nadiotis},
+pdfsubject={Preliminary technical report; civilian-use licence; military use prohibited; initial idea credited to Christos Paparistodemou},
+pdfkeywords={robotics, telemetry, liveness monitoring, ROS 2, intermittent connectivity, OpenPELAOS, civilian use, no military use},
+pdflang={en},
+pdfcopyright={Copyright 2026 Charalampos Nadiotis. Custom Civilian-Use Licence, Version 1.0: military use prohibited. Full terms in this manuscript. Initial project idea: Christos Paparistodemou.}}
+\linespread{1.02}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlength{\emergencystretch}{2em}
+\setlist{nosep,leftmargin=1.4em}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.65em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.65em}{}
+\titlespacing*{\section}{0pt}{12pt}{5pt}
+\titlespacing*{\subsection}{0pt}{8pt}{3pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small OpenPELAOS / ROS3-Limassol}
+\fancyhead[R]{\small Preliminary technical report}
+\fancyfoot[L]{\scriptsize\textcopyright\ 2026 C. Nadiotis\quad\hyperref[sec:licence]{Civilian-Use Licence - No military use}}
+\fancyfoot[R]{\small\thepage}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\scriptsize\textcopyright\ 2026 C. Nadiotis\quad\hyperref[sec:licence]{Civilian-Use Licence - No military use}}
+\fancyfoot[R]{\small\thepage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\healthy}{\mathrm{HEALTHY}}
+\newcommand{\stale}{\mathrm{STALE}}
+\newcommand{\waiting}{\mathrm{WAITING}}
+\begin{document}
+\thispagestyle{plain}
+\begin{center}
+{\LARGE\bfseries ROS3-Limassol: An OpenPELAOS Prototype\\[3pt]
+for Telemetry Liveness Monitoring}\\[8pt]
+{\large Intermittently Connected Robotic Systems}\\[11pt]
+Charalampos Nadiotis\\[3pt]
+OpenPELAOS, independent open-source project\\[5pt]
+{\small Initial project idea: Christos Paparistodemou}\\[5pt]
+{\small ResearchGate preprint edition: 25 October 2026}\\[3pt]
+{\small Original experiment: 23 October 2026, software v0.1.0}\\[5pt]
+{\footnotesize\textcopyright\ 2026 Charalampos Nadiotis.\quad
+\hyperref[sec:licence]{Custom Civilian-Use Licence, v1.0.}}\\[2pt]
+{\footnotesize\textbf{Military use is prohibited. Full licence terms appear in this report.}}
+\end{center}
+
+\begin{abstract}
+Robotic telemetry can stop arriving because of communication disruption, publisher
+failure, or upstream data interruption. A receiver therefore needs an explicit
+rule for interpreting the absence of valid messages. This report describes
+ROS3-Limassol, an OpenPELAOS development prototype comprising a transport-independent
+Python core, a synthetic unmanned surface vehicle telemetry source, and an optional
+ROS~2 adapter. The observer evaluates elapsed receiver time since the last accepted
+message and distinguishes waiting, healthy, and stale states. Schema validation,
+session identifiers, and increasing sequence numbers prevent several malformed
+or replayed messages from refreshing that timer. A deterministic experiment
+with a three-second blackout reproduces stale detection and recovery, accepting
+51 of 81 generated samples. In the original version-0.1.0 validation, eighteen core tests pass; one ROS graph test is
+explicitly skipped because ROS~2 is unavailable in the authoring environment.
+The evidence establishes software behavior under a specified synthetic scenario.
+Real transport timing, field performance, and research novelty remain unestablished.
+\end{abstract}
+{\small\textbf{Keywords:} ROS~2; field robotics; telemetry; liveness monitoring;
+intermittent connectivity; reproducibility.}
+
+\section{Introduction}
+A robotics operator may continue to see an apparently valid position or battery
+reading after the source has stopped delivering usable updates. The most recent
+value and the current availability of its source are different observations.
+ROS3-Limassol begins with the task of making arrival liveness explicit, before
+attempting navigation, mission execution, or broader autonomy.
+
+The project is developed under OpenPELAOS, with the initial idea credited to
+Christos Paparistodemou. ROS3-Limassol is the project identifier; version~0.1.0
+implements a toolkit that can use ROS~2. The immediate outcome is a small
+implementation that can be inspected and exercised without a robot or a ROS
+installation. Its intended ROS mode adds interprocess communication around the
+same core logic. This is an independent project, rather than an official
+ROS distribution.
+
+The motivating question is whether a bounded receiver-side observer can report
+the absence and resumption of accepted telemetry without depending on synchronized
+sender and receiver clocks. The present contribution is an implementation and
+deterministic verification baseline \cite{artifact}. It does not introduce a new
+failure-detection algorithm or establish an advantage over existing robotics
+software. Its value at this stage is a precise contract, reproducibility, and
+an explicit boundary between verified behavior and planned evaluation.
+
+\section{Background and technical basis}
+ROS~2 provides an established modular robotics software architecture.
+Macenski et al.\ describe its design and deployment context
+\cite{macenski2022}. Reusing that infrastructure allows the prototype to focus on
+application-level observations. The adapter follows the Python publisher/subscriber
+and \code{ament\_python} conventions in the official documentation
+\cite{ros_python}.
+
+ROS~2 quality-of-service settings distinguish history, reliability, and durability,
+and communicating endpoints require compatible policies \cite{ros_qos}.
+These policies do not, by themselves, define what a particular application should
+consider a sufficiently recent valid telemetry sample. The prototype therefore
+evaluates its own acceptance and timeout rules.
+
+Failure-detector theory distinguishes completeness and accuracy, including the
+possibility that a detector makes mistakes \cite{chandra1996}. That distinction
+helps interpret a timeout as a receiver observation of missing accepted data.
+It cannot identify which physical component failed, and no formal
+failure-detector class is claimed here.
+
+Receiver intervals use Python's \code{time.monotonic()}. Its documented reference
+point is unspecified, while differences between readings are meaningful and
+unaffected by system-clock updates \cite{python_time}. Sender timestamps remain
+recording metadata. Local arrival liveness is therefore separate from a future
+model of measurement age or clock synchronization.
+
+\section{System model and liveness rule}
+\subsection{Accepted arrivals}
+Consider one configured robot and a sequence of accepted receiver arrival times
+$r_0,r_1,\ldots$ on the same monotonic clock. The sequence is non-decreasing.
+For observation time $t$, define
+\begin{equation}
+\mathcal{R}(t)=\{r_i:r_i\leq t\}.
+\label{eq:arrivals}
+\end{equation}
+This set contains arrivals that have passed the application checks. In the
+default scenario, the last accepted arrival before the blackout is
+$r_i=1.9\,\mathrm{s}$. A malformed payload received later does not enter this set.
+
+When $\mathcal{R}(t)$ is nonempty, the most recent accepted arrival has age
+\begin{equation}
+a(t)=t-\max\mathcal{R}(t).
+\label{eq:age}
+\end{equation}
+The value is an interval in seconds, rather than the age of the underlying
+sensor measurement. At $t=2.9\,\mathrm{s}$, with a last arrival at
+$1.9\,\mathrm{s}$, Equation~\eqref{eq:age} gives $a(t)=1.0\,\mathrm{s}$.
+
+For timeout $\tau>0$, the observer state is
+\begin{equation}
+s(t)=
+\begin{cases}
+\waiting,&\mathcal{R}(t)=\varnothing,\\
+\healthy,&\mathcal{R}(t)\neq\varnothing\ \text{and}\ a(t)<\tau,\\
+\stale,&\mathcal{R}(t)\neq\varnothing\ \text{and}\ a(t)\geq\tau.
+\end{cases}
+\label{eq:state}
+\end{equation}
+With $\tau=1.0\,\mathrm{s}$, the previous example is stale. A new accepted message
+at $5.0\,\mathrm{s}$ resets the age to zero and restores the healthy state.
+Before the first valid arrival, the observer retains the waiting state.
+
+\subsection{Observation timing}
+Suppose no accepted arrival occurs after $r_\ast$, and consecutive observer
+evaluations are separated by at most $h$ seconds. The first stale report satisfies
+\begin{equation}
+r_\ast+\tau\leq t_{\mathrm{detect}}\leq r_\ast+\tau+h.
+\label{eq:bound}
+\end{equation}
+For $r_\ast=1.9\,\mathrm{s}$, $\tau=1.0\,\mathrm{s}$, and an assumed evaluation-gap
+bound $h=0.1\,\mathrm{s}$, the interval is $[2.9,3.0]\,\mathrm{s}$. The deterministic
+scenario detects the transition at the lower endpoint.
+
+Equation~\eqref{eq:bound} depends on the evaluation-gap assumption. A nominal ROS
+timer period does not establish a hard scheduling guarantee on a general operating
+system. No real-time bound has been measured. Furthermore, a stream of old
+measurements carrying new valid sequence numbers can satisfy arrival liveness
+while remaining unsuitable for navigation.
+
+\section{Prototype architecture}
+\subsection{Telemetry contract}
+The core accepts a versioned JSON object containing robot and publisher-session
+identifiers, sequence number, timestamp, geodetic latitude and longitude, heading,
+speed, and battery percentage. Units are explicit: degrees, metres per second,
+percentage, and timestamp nanoseconds. The source produces illustrative signals,
+rather than a physically consistent vessel dynamics model.
+
+RFC~8259 specifies JSON, excludes non-finite numeric values, and discusses
+interoperability concerns including duplicate object names \cite{rfc8259}.
+The application contract adds strict field and value checks. All expected fields
+must be present; extra fields, duplicate keys, and booleans used as numbers are
+rejected. Numeric ranges and identifier lengths are bounded.
+
+Payloads are limited to 4096 UTF-8 bytes before JSON decoding. The version-1 speed
+limit is $100\,\mathrm{m\,s^{-1}}$, which is an application bound. These checks
+bound application parsing and retained state; they do not establish middleware
+resource bounds.
+
+\subsection{Sessions and ordering}
+Within the active publisher session, accepted sequence numbers must strictly
+increase. Gaps are permitted. A previously unseen session permits a publisher
+restart with sequence zero. Known retired sessions are rejected, preventing
+delayed samples from a known old session from becoming current again.
+
+The monitor retains at most 128 sessions by default. An additional unseen session
+is rejected once the limit is reached, while the active session may continue.
+Restarting the monitor clears the history. Persistent replay protection and
+authenticated session negotiation remain future work.
+
+The model assumes one legitimate publisher for the configured robot identity.
+It does not authenticate sources or resolve competing publishers. Invalid
+payloads, unexpected robots, duplicate or out-of-order sequences, retired sessions,
+and excess new sessions increment a rejection counter without refreshing liveness.
+
+\subsection{Transport separation}
+The validator, simulator, monitor, and local demonstration use only Python's
+standard library. The default demonstration passes JSON directly between source
+and observer within one process.
+
+The optional adapter carries that JSON in \code{std\_msgs/msg/String}.
+Telemetry endpoints use KEEP\_LAST, depth~1, BEST\_EFFORT, and VOLATILE.
+Status uses depth~1, RELIABLE, and VOLATILE. These settings follow documented
+ROS~2 semantics \cite{ros_qos}; compatible transport profiles do not establish
+measurement freshness.
+
+In ROS mode, the observer is configured to evaluate and publish status every
+$0.1\,\mathrm{s}$ using a steady-clock timer, with separate robot namespaces.
+A status consumer still needs to detect disappearance of the observer itself.
+Version~0.1.0 contains no vehicle-command interface, generated ROS message
+definitions, or MAVLink adapter.
+
+\section{Verification method and results}
+\subsection{Deterministic experiment}
+The scenario uses duration $D=8.0\,\mathrm{s}$, source rate $f=10\,\mathrm{Hz}$,
+and receiver timeout $1.0\,\mathrm{s}$. Sampling includes both endpoints:
+\begin{equation}
+t_k=\frac{k}{f},\qquad k=0,\ldots,\lfloor Df\rfloor.
+\label{eq:samples}
+\end{equation}
+The configured values give indices $0,\ldots,80$, hence 81 generated samples.
+
+The link model suppresses samples for which $2.0\leq t_k<5.0\,\mathrm{s}$.
+These are indices 20 through 49, so
+\begin{equation}
+N_{\mathrm{generated}}=81,\quad
+N_{\mathrm{suppressed}}=30,\quad
+N_{\mathrm{accepted}}=81-30=51.
+\label{eq:counts}
+\end{equation}
+Suppression occurs before delivery to the observer, explaining why the base
+scenario has zero rejected messages despite missing 30 generated samples.
+
+The observed sequence is waiting at $0.0\,\mathrm{s}$ before the first sample,
+healthy at $0.0\,\mathrm{s}$ after acceptance, stale at $2.9\,\mathrm{s}$, and healthy
+again at $5.0\,\mathrm{s}$ \cite{artifact}. The final pre-blackout sequence is 19
+and the first resumed sequence is 50.
+
+Detection is $2.9-2.0=0.9\,\mathrm{s}$ after the configured blackout starts, or
+$2.9-1.9=1.0\,\mathrm{s}$ after the last accepted arrival. These intervals use
+different reference events. Recovery at the $5.0\,\mathrm{s}$ virtual tick
+demonstrates the state rule rather than a measured network recovery latency.
+
+\subsection{Executed software checks}
+The recorded run discovers 19 test methods: 18 core methods pass and one ROS graph
+test is skipped because \code{rclpy} is unavailable. The core checks cover timeout
+boundaries, recovery, malformed payloads, invalid clocks, sequence ordering,
+publisher restarts, retired sessions, history bounds, JSON validation, and
+deterministic command-line output \cite{artifact}. This is evidence for the
+exercised behaviors rather than a complete correctness proof or coverage result.
+
+An offline wheel build succeeds. Inspection confirms the core modules, ROS
+adapter, launch file, package manifest, license, and ament marker. The installed
+wheel's JSON demonstration also runs from outside the source tree. Python syntax,
+the XML package manifest, and CI YAML parse successfully.
+
+The ROS package build, launch execution, DDS graph test, and ROS CI job were not
+executed in the authoring environment. The supplied graph test observes healthy
+traffic, cancels the publisher timer to model an outage, and resets it to check
+recovery when run in a suitable ROS environment. The test definition alone does
+not establish that the transport has passed.
+
+\section{Limitations and next evaluation}
+The deterministic scenario uses virtual time and in-process delivery. It does not
+exercise discovery delay, scheduling, serialization overhead, queueing, bandwidth
+constraints, or a physical wireless link. Arrival age and state labels do not
+certify measurement capture time, position accuracy, or vehicle condition.
+
+The next evaluation should execute the Jazzy build and graph test, then record
+a real ROS launch with the same blackout. Controlled experiments can vary delay,
+jitter, outages, and loss while documenting source rates, session handling, and
+timeouts. Detection and recovery delays require explicitly defined ground-truth
+events; stale indications during source availability should also be reported.
+Repeated runs are needed before estimating performance distributions.
+
+Recorded-data replay, a receive-only MAVLink adapter, and companion-computer
+deployment are proposed extensions. Multi-robot field operation, marine dynamics,
+new transport performance, and middleware replacement have not been demonstrated.
+Research novelty requires a broader literature comparison and additional evidence.
+
+\section{Conclusion}
+ROS3-Limassol establishes an OpenPELAOS starting point for explicit telemetry
+arrival-liveness monitoring. A receiver monotonic clock, strict message acceptance,
+and bounded session history make its behavior inspectable. The deterministic
+blackout reproduces stale detection and recovery, and 18 core test methods pass.
+A successful ROS transport run and a controlled distributed evaluation are the
+next evidence needed. This report records a preliminary implementation baseline.
+
+\section*{Idea attribution}
+The initial project idea is credited to \textbf{Christos Paparistodemou}, following
+the project initiator's attribution. His public ResearchGate profile is
+\url{https://www.researchgate.net/profile/Christos-Paparistodemou}.
+The link identifies the contributor; the idea credit is supplied by the project
+initiator. Project development and this report are presented under OpenPELAOS
+by Charalampos Nadiotis.
+
+\section*{Reproducibility and artifact availability}
+The software targets Python~3.10 or newer; the authoring run used Python~3.12.14.
+The optional transport target is ROS~2 Jazzy on Ubuntu~24.04. For the current repository layout, first run\\
+\code{cd robotics/ros3\_limassol}; then:
+\begin{quote}\small
+\code{python -m ros3\_limassol.demo}\\
+\code{python -m ros3\_limassol.demo --json}\\
+\code{python -m unittest discover -s tests -v}
+\end{quote}
+The accompanying implementation archive includes the Apache-2.0 license,
+contributor instructions, tests, and validation record. The public repository is
+\url{https://github.com/n0711/ROS3-Limassol}; the robotics package is under
+\code{robotics/ros3\_limassol}. The editable XeLaTeX manuscript includes its
+bibliography. This is a preliminary, non-peer-reviewed technical report.
+
+\textbf{Version and evidence note (25 October 2026).}
+Sections 1--7 retain the original 23 October 2026 version-0.1.0 experiment and
+validation record. A subsequent software-development snapshot is version~0.3.1 at
+commit \code{272a3b09c2271c56325683f8818e5436a377752f}, adding recording/replay,
+a live receive-only recorder, and Humble compatibility work. A previously recorded local rerun of
+that commit discovered 45 tests: 42 passed and three ROS integration tests were
+skipped because \code{rclpy} was unavailable. These counts must not be confused
+with the original 18-test baseline. The repository validation record documents
+CI evidence separately. This edition adds a custom manuscript licence, attribution details, and
+publication metadata. It preserves the reported experiments and adds no field results.
+
+\clearpage
+\section*{Copyright and licence}
+\label{sec:licence}
+\textbf{Civilian-Use Licence (No Military Use), Version 1.0}\\
+\textcopyright\ 2026 Charalampos Nadiotis.
+
+\textbf{1. Licensed material and scope.}
+These terms apply to the original copyrightable content of this manuscript,
+\emph{ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring},
+ResearchGate preprint edition, 25 October 2026. Referenced third-party works and
+separately licensed software are excluded. Only rights held by the copyright
+holder are granted. No patent or trademark rights are granted.
+
+\textbf{2. Permitted civilian reuse.}
+Subject to these terms, the copyright holder grants worldwide, royalty-free,
+non-exclusive permission to reproduce, distribute, communicate, translate, and
+adapt the licensed material for civilian purposes, including commercial civilian
+activities.
+
+\textbf{3. Attribution and redistribution.}
+Retain the author's name, manuscript title, copyright notice, this licence, and
+the credit \emph{Initial project idea: Christos Paparistodemou}. Identify changes
+and do not imply endorsement by the author or the credited contributor.
+Copies and adaptations containing the licensed material must include these
+terms and retain the prohibition on military use. Recipients receive permission
+under these same terms; a distributor may not grant military-use permission
+for the licensed material.
+
+\textbf{4. Military use prohibited.}
+The licensed material and adaptations may not be used for military purposes.
+A military purpose is an activity intended to support armed forces, military
+operations, or military capabilities. This includes research, design,
+development, integration, training, simulation, testing, procurement, deployment,
+operation, or maintenance of military weapons, targeting systems, unmanned
+systems, command-and-control systems, or military intelligence, surveillance,
+and reconnaissance systems. The prohibition applies both to direct military
+use and to work by civilian organisations or individuals intended for a military
+end use.
+
+\textbf{5. Termination.}
+Permission terminates automatically for a user who breaches these terms.
+That user must stop exercising the permissions granted by this licence.
+Reinstatement requires written permission from the copyright holder.
+
+\textbf{6. Exceptions and warranty.}
+Nothing in these terms restricts a use that applicable law permits without
+copyright permission. The material is provided \emph{as is}, without warranties,
+to the extent permitted by law. These terms regulate copyright reuse of the
+manuscript; they do not restrict independent implementations or change rights
+already granted for separately licensed software.
+
+\textbf{Software licence boundary.}
+The accompanying software remains separately licensed under Apache-2.0.
+The manuscript's military-use restriction does not amend that software licence.
+This manuscript uses the custom terms above.
+
+\section*{Suggested citation}
+Nadiotis, C. (2026).
+\emph{ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring}.
+Preliminary technical report, ResearchGate preprint edition, 25 October 2026.
+OpenPELAOS. \url{https://github.com/n0711/ROS3-Limassol}.
+Initial project idea: Christos Paparistodemou.
+
+\clearpage
+\begin{thebibliography}{9}\small\raggedright
+\urlstyle{same}
+\setlength{\itemsep}{3pt}
+\bibitem{artifact}
+C.~Nadiotis. \emph{ROS3-Limassol: OpenPELAOS Development Starter}.
+Version~0.1.0, source package and \code{docs/VALIDATION.md}, 23 October 2026.
+Software artifact, Apache-2.0. Public repository:
+\url{https://github.com/n0711/ROS3-Limassol}.
+The original report describes version~0.1.0; subsequent development is identified
+separately in the publication-preparation note. No archival DOI assigned.
+\bibitem{macenski2022}
+S.~Macenski, T.~Foote, B.~Gerkey, C.~Lalancette, and W.~Woodall,
+Robot Operating System 2: Design, architecture, and uses in the wild.
+\emph{Science Robotics}, vol.~7, no.~66, article eabm6074, 2022.
+\href{https://doi.org/10.1126/scirobotics.abm6074}{doi:10.1126/scirobotics.abm6074}.
+Author manuscript: \url{https://arxiv.org/abs/2211.07752}.
+\bibitem{ros_python}
+Open Robotics. Writing a simple publisher and subscriber (Python).
+\emph{ROS 2 Documentation: Jazzy}.
+\url{https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html}.
+Accessed 23 October 2026.
+\bibitem{ros_qos}
+Open Robotics. Quality of Service settings. \emph{ROS 2 Documentation: Jazzy}.
+\url{https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html}.
+Accessed 23 October 2026.
+\bibitem{chandra1996}
+T.~D.~Chandra and S.~Toueg. Unreliable failure detectors for reliable distributed
+systems. \emph{Journal of the ACM}, vol.~43, no.~2, pp.~225--267, 1996.
+\href{https://doi.org/10.1145/226643.226647}{doi:10.1145/226643.226647}.
+Author-maintained record: \url{https://www.cs.cornell.edu/info/people/sam/FDpapers.html}.
+\bibitem{python_time}
+Python Software Foundation. Time access and conversions:
+\code{time.monotonic()}. \emph{Python 3.12 Documentation}.
+\url{https://docs.python.org/3.12/library/time.html#time.monotonic}.
+Accessed 23 October 2026.
+\bibitem{rfc8259}
+T.~Bray, Ed. \emph{The JavaScript Object Notation (JSON) Data Interchange Format}.
+RFC~8259, December 2017.
+\url{https://www.rfc-editor.org/rfc/rfc8259.html}.
+\end{thebibliography}
+\end{document}
+
