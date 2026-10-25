@@ -1,6 +1,8 @@
 import contextlib
 import io
 import json
+from pathlib import Path
+import tempfile
 import unittest
 
 from ros3_limassol.demo import main, run_demo
@@ -8,6 +10,25 @@ from ros3_limassol.simulator import UsvSimulator
 
 
 class DemoTests(unittest.TestCase):
+    def test_invalid_cli_options_do_not_reserve_recording_path(self):
+        cases = [["--duration", "0"], ["--rate", "nan"],
+                 ["--stale-after", "0"], ["--blackout-start", "-1"],
+                 ["--blackout-duration", "-1"],
+                 ["--duration", "3600", "--rate", "1000"]]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "retry.jsonl"
+            for options in cases:
+                with self.subTest(options=options):
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        with self.assertRaises(SystemExit) as error:
+                            main(["--record", str(path), *options])
+                    self.assertEqual(error.exception.code, 2)
+                    self.assertFalse(path.exists())
+            # The same path is immediately usable after correcting the options.
+            with contextlib.redirect_stdout(io.StringIO()):
+                main(["--record", str(path)])
+            self.assertEqual(len(path.read_text().splitlines()), 81)
+
     def test_deterministic_blackout_and_recovery(self):
         events = list(run_demo())
         self.assertEqual(events, list(run_demo()))

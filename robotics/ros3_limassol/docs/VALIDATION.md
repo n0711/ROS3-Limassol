@@ -1,5 +1,14 @@
 # Validation record
 
+## Recording input validation follow-up, 25 October 2026
+
+The local suite discovers 47 tests: 44 pass and three ROS integration tests are
+skipped because `rclpy` is absent. New regression checks verify that invalid demo
+options leave no output file, a corrected retry succeeds, and invalid UTF-8 on
+the first or second recording line produces CLI exit status 2 with the correct
+line number. The original deterministic experiment and record/replay equivalence
+continue to pass. These results do not establish a new ROS or field execution.
+
 Date: 24 October 2026. Package: ROS3-Limassol 0.3.1.
 
 ## Local implementation checks

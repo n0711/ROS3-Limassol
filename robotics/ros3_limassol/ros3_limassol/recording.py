@@ -74,7 +74,10 @@ def read_observations(stream):
     """Read a text stream with bounded line lengths, retaining no full trace."""
     previous = None
     for index in range(MAX_RECORDS + 1):
-        line = stream.readline(MAX_RECORD_BYTES + 1)
+        try:
+            line = stream.readline(MAX_RECORD_BYTES + 1)
+        except UnicodeError as exc:
+            raise ValueError(f"line {index + 1}: recording must be UTF-8 text") from exc
         if not line:
             return
         if index == MAX_RECORDS:

@@ -35,7 +35,10 @@ def main(args=None):
     parser.add_argument("--json", action="store_true", help="emit JSON Lines")
     options = parser.parse_args(args)
     try:
-        with open(options.recording, encoding="utf-8", newline="") as stream:
+        # Decode one bounded line at a time. TextIOWrapper may read ahead and
+        # report invalid bytes from a later line while reading the first line.
+        with open(options.recording, "rb") as raw_stream:
+            stream = _Utf8Lines(raw_stream)
             for event in run_replay(stream, options.robot_id, options.stale_after):
                 if options.json:
                     print(json.dumps(event, allow_nan=False, separators=(",", ":")))
@@ -45,6 +48,16 @@ def main(args=None):
                     print(f"t={event['time_s']:4.1f}s  {event['state']}")
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
+
+
+class _Utf8Lines:
+    """Decode bounded binary lines without reading ahead into later records."""
+
+    def __init__(self, stream):
+        self.stream = stream
+
+    def readline(self, limit):
+        return self.stream.readline(limit).decode("utf-8")
 
 
 if __name__ == "__main__":

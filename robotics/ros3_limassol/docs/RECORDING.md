@@ -27,6 +27,15 @@ python -m ros3_limassol.replay run.jsonl --stale-after 2.0 --json
 The first two outputs match for the same timeout. The default file contains 81
 observations, including 30 null ticks during the blackout. Recording refuses to
 overwrite existing files; use a new filename for another experiment.
+Invalid demo options are rejected before creating the output file, so a corrected
+retry can reuse the requested path. This includes invalid timeouts, blackout
+settings and configurations exceeding the observation-count limit.
+
+Replay rejects invalid UTF-8 with the affected recording line number and exits
+with CLI status 2. It decodes bounded binary lines individually so a damaged
+later line is not attributed to an earlier buffered read. A failure can follow
+already emitted transitions; only a successful exit and final summary establish
+that replay reached the end of the recording.
 
 Replay advances virtual receiver time without sleeping. It evaluates status at
 recorded observation instants and reports transitions and a final summary. Null
