@@ -46,9 +46,14 @@ def verify():
             raise RuntimeError(f"Installed ROS package missing executables: {sorted(missing)}")
 
         recording = work / "demo.jsonl"
-        command = (sys.executable, "-m", PACKAGE)
-        demo = run(*command, "demo", "--json", "--record", str(recording), cwd=work)
-        replay = run(*command, "replay", str(recording), "--json", cwd=work)
+        demo = run(
+            sys.executable, "-m", f"{PACKAGE}.demo", "--json", "--record",
+            str(recording), cwd=work,
+        )
+        replay = run(
+            sys.executable, "-m", f"{PACKAGE}.replay", str(recording),
+            "--json", cwd=work,
+        )
         if demo != replay:
             raise RuntimeError("The installed demo and replay outputs do not match")
 
@@ -63,7 +68,10 @@ def verify():
             raise RuntimeError("Unexpected default synthetic message counts")
 
         report = json.loads(
-            run(*command, "evidence", str(recording), "--robot-id", "usv01", cwd=work)
+            run(
+                sys.executable, "-m", f"{PACKAGE}.evidence", str(recording),
+                "--robot-id", "usv01", cwd=work,
+            )
         )
         checks = {
             "recording_parsed_to_eof": True,
