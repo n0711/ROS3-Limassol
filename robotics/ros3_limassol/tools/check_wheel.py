@@ -17,7 +17,7 @@ def main():
     wheel = wheels[0]
     with zipfile.ZipFile(wheel) as archive:
         members = archive.namelist()
-        for suffix in ("ros3_limassol/analysis.py", "ros3_limassol/evidence.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
+        for suffix in ("ros3_limassol/multimodal.py", "ros3_limassol/analysis.py", "ros3_limassol/evidence.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
                        "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/package.xml", "/LICENSE",
                        "/NOTICE", "/resource_index/packages/ros3_limassol"):
