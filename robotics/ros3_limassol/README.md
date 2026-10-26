@@ -1,7 +1,18 @@
-# ROS3-Limassol package
+# ROS3-Limassol Python and ROS 2 package
 
-OpenPELAOS telemetry-liveness prototype, version 0.3.1. Developed by Charalampos
+OpenPELAOS receiver-arrival monitoring prototype, version 0.3.1. Developed by Charalampos
 Nadiotis; initial project idea credited to Christos Paparistodemou. [Apache-2.0](LICENSE).
+
+**Start here:** Choose **Standalone Python** if you want a quick synthetic demonstration
+without ROS. Choose **ROS 2 Humble** or **ROS 2 Jazzy** if you want ROS topics,
+a simulator publisher or a receive-only recorder. These ROS 2 steps require a
+separately installed ROS distribution; this project is not an official ROS release.
+
+**Directory conventions:** Standalone `python -m` commands below run from this
+package directory (`robotics/ros3_limassol/`). ROS build and launch steps run
+from the **repository root** (the directory containing `robotics/`). Use a
+separate terminal for each concurrently running ROS process, and source the
+same ROS distribution and workspace in each terminal.
 
 ## Standalone Python
 
@@ -41,6 +52,8 @@ provenance. A failed read emits no JSON report. See the
 
 ## ROS 2 Humble on Ubuntu 22.04
 
+Run the following commands from the **repository root**, not the package directory.
+
 Install [Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)
 and the standard ROS development tools separately. Use the system Python 3.10
 from this ROS installation. From the **repository root**, in a fresh workspace:
@@ -72,6 +85,8 @@ environments and generated `build/`, `install/` and `log/` trees are not
 interchangeable. Do not source both distributions in the same terminal.
 
 ## ROS 2 Jazzy on Ubuntu 24.04
+
+Run the following commands from the **repository root**, not the package directory.
 
 Install Jazzy and the standard ROS development tools separately. From the
 **repository root**:
@@ -109,6 +124,11 @@ the nodes to change them. Steady-clock timers and receiver monotonic time drive
 liveness. No hard scheduling bound is established.
 
 ## Record a live ROS stream
+
+This section records messages delivered to the recorder's subscriber; it cannot
+prove how many messages the sender transmitted. For the demo publisher and
+observer, start `usv_demo.launch.py` first as shown above. To record an
+**existing** telemetry publisher, only the recorder launch is necessary.
 
 After building, run the demo above or an existing schema-v1 telemetry publisher.
 In a second terminal with the same ROS distribution and `install/setup.bash` sourced:
