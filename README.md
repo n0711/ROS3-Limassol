@@ -60,6 +60,18 @@ Recordings include receiver observation ticks during communication silence. The 
 
 See [recording format](robotics/ros3_limassol/docs/RECORDING.md) and [evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
 
+## Offline anomaly and vision evidence (experimental)
+
+The read-only, standard-library `ros3_limassol.analysis` tool extracts
+aggregate receiver-observation features and fits an exploratory median/MAD
+baseline from at least five distinct training recordings. Optional
+`ros3_limassol.multimodal` bundles those features with independent VERA-MOT
+tracker summaries and declared external-VLM annotations. No real VLM runs in
+this repository; synchronized clocks, GNSS-denied localization, navigation
+and hardware validation remain unverified.
+
+See the [multimodal research guide](robotics/ros3_limassol/docs/MULTIMODAL.md).
+
 ## What is implemented?
 
 - Bounded, versioned JSON telemetry validation with explicit units.
