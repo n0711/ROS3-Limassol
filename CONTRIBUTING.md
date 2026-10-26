@@ -63,4 +63,4 @@ Use a repository issue with reproduction steps, expected/actual results, branch 
 
 ## License
 
-Contributions are made under the repository's [MIT license](LICENSE).
+For ROS3 Python files in `robotics/ros3_limassol/` and the Rust core in `robotics/ros3_core/`, follow their **Apache-2.0** licensing. Existing LearnTwin material retains the repository's [MIT license](LICENSE). The manuscript has its own [licence](docs/papers/MANUSCRIPT_LICENCE.md), which does not change the software licences.
