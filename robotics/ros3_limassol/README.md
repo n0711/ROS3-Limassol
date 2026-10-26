@@ -88,6 +88,29 @@ The LLM does not issue commands, validate vehicle safety, or implement
 Vision-Language-Action. Read the full [LLM integration guide](docs/LLM.md)
 before interpreting output.
 
+## Local vision-language camera observer (optional)
+
+With a separately running local Ollama **vision** model, ROS3 can consume
+`sensor_msgs/msg/CompressedImage` from an existing camera and publish
+read-only scene descriptions. No camera driver or model weights are bundled.
+From the **package directory** an authorized existing image can be inspected
+without ROS:
+
+```bash
+python -m ros3_limassol.vlm_diagnostics --image frame.jpg --model gemma3:4b
+```
+
+From the **repository root**, after building/sourcing ROS 2:
+
+```bash
+ros2 launch ros3_limassol vlm_observer.launch.py model:=gemma3:4b camera_topic:=/camera/image_raw/compressed
+```
+
+View output at `/limassol/usv01/vlm_diagnostics`. The input must be an existing
+compressed JPEG/PNG camera topic. Requests are local, bounded, rate-limited,
+and read-only; they do not establish image interpretation accuracy or
+navigation authority. See [VLM instructions](docs/VLM.md).
+
 ## ROS 2 Humble on Ubuntu 22.04
 
 Run the following commands from the **repository root**, not the package directory.

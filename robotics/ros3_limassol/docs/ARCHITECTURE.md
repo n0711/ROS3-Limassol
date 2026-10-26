@@ -46,6 +46,22 @@ send raw recording files or coordinates to the model. This is genuine
 **LLM** inference, but not VLM/VLA processing or an official ROS successor.
 See [LLM.md](LLM.md) for its precise limits.
 
+## Optional read-only vision inference
+
+The independent `VLMObserverNode` subscribes to ROS 2
+`sensor_msgs/msg/CompressedImage` on `camera/image/compressed`.
+It accepts bounded JPEG/PNG payloads, samples at most one frame every
+configured interval, and delegates actual local Ollama inference to one worker
+thread. The ROS timer publishes only a validated JSON scene description and
+image fingerprint on `vlm_diagnostics`. New input frames are dropped while the
+worker is busy; results older than the configured maximum age are discarded.
+No raw image is republished, and no command topics/services exist in this node.
+
+`vlm_diagnostics.py` offers a corresponding ROS-independent one-image CLI.
+The observer does not automatically associate its sampled frames with
+VERA-MOT tracks, telemetry timestamps, or GNSS state. The independent
+text LLM and camera VLM paths are not a control system. See [VLM.md](VLM.md).
+
 ## Data flow
 
 1. `UsvSimulator` produces synthetic geodetic telemetry and drops samples during

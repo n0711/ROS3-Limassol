@@ -34,6 +34,8 @@ setup(
             "link_monitor = ros3_limassol.ros_nodes:monitor_main",
             "telemetry_recorder = ros3_limassol.ros_nodes:recorder_main",
             "llm_diagnostics = ros3_limassol.ros_nodes:llm_diagnostics_main",
+            "limassol_vlm = ros3_limassol.vlm_diagnostics:main",
+            "vlm_observer = ros3_limassol.vlm_ros_nodes:main",
         ],
     },
 )

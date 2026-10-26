@@ -162,7 +162,9 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertIn(("url", LOCAL_CHAT_URL), calls)
         self.assertIn(("timeout", 2), calls)
         self.assertIn(("read_limit", 32769), calls)
-        self.assertEqual(len(opener.call_args.args), 1)
+        self.assertEqual(len(opener.call_args.args), 2)
+        from ros3_limassol.llm_diagnostics import _NoRedirect
+        self.assertIsInstance(opener.call_args.args[1], _NoRedirect)
 
 
 if __name__ == "__main__":
