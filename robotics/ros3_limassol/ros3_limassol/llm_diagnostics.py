@@ -137,6 +137,13 @@ def status_from_evidence(report):
     return validate_status(status), features["features"]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never forward local prompts/images to another host on HTTP redirects."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def local_chat(payload, timeout_s=8.0):
     """Call local Ollama only. Ignore proxy environment to avoid remote egress."""
     if type(timeout_s) not in (float, int) or not 0 < timeout_s <= 30:
@@ -146,7 +153,7 @@ def local_chat(payload, timeout_s=8.0):
         LOCAL_CHAT_URL, data=body, headers={"Content-Type": "application/json"},
         method="POST",
     )
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
     try:
         with opener.open(request, timeout=timeout_s) as response:
             data = response.read(MAX_REPLY_BYTES + 1)
