@@ -28,6 +28,7 @@ setup(
             "limassol_replay = ros3_limassol.replay:main",
             "limassol_evidence = ros3_limassol.evidence:main",
             "limassol_analyse = ros3_limassol.analysis:main",
+            "limassol_multimodal = ros3_limassol.multimodal:main",
             "sim_usv = ros3_limassol.ros_nodes:sim_main",
             "link_monitor = ros3_limassol.ros_nodes:monitor_main",
             "telemetry_recorder = ros3_limassol.ros_nodes:recorder_main",
