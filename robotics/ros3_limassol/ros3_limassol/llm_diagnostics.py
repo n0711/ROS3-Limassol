@@ -233,7 +233,8 @@ def main(argv=None):
         if options.evidence:
             status, features = status_from_evidence(load_json(options.evidence))
         else:
-            raw = Path(options.status_file).read_bytes()
+            with Path(options.status_file).open("rb") as stream:
+                raw = stream.read(MAX_STATUS_BYTES + 1)
             status, features = validate_status(raw), None
         result = explain_status(
             status, model=options.model, features=features, timeout_s=options.timeout,
