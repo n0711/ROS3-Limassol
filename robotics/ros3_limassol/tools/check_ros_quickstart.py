@@ -15,7 +15,7 @@ import tempfile
 
 
 PACKAGE = "ros3_limassol"
-REQUIRED_EXECUTABLES = {"sim_usv", "link_monitor", "telemetry_recorder", "llm_diagnostics"}
+REQUIRED_EXECUTABLES = {"sim_usv", "link_monitor", "telemetry_recorder", "llm_diagnostics", "vlm_observer"}
 
 
 def run(*command, cwd):
