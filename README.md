@@ -72,6 +72,26 @@ and hardware validation remain unverified.
 
 See the [multimodal research guide](robotics/ros3_limassol/docs/MULTIMODAL.md).
 
+## Optional local LLM diagnostics (experimental)
+
+ROS3 now includes an **actual local Ollama language-model inference adapter**
+for explaining receiver-arrival link status. It is read-only and independent of
+the core monitor. The LLM receives bounded, validated status/evidence fields,
+**not raw telemetry**, and never controls a robot.
+
+With a local Ollama server and a locally installed model (e.g. `llama3.2`),
+run from `robotics/ros3_limassol/`:
+
+```bash
+python -m ros3_limassol.llm_diagnostics --evidence evidence.json --model llama3.2
+```
+
+For ROS 2 use `ros2 launch ros3_limassol llm_diagnostics.launch.py model:=llama3.2`
+after building and sourcing the package. The model must already be running;
+CI uses a mock, not downloaded model weights. Output is **unverified diagnostic
+text**, not autonomy, VLM/VLA, or field validation. See the
+[LLM integration guide](robotics/ros3_limassol/docs/LLM.md).
+
 ## What is implemented?
 
 - Bounded, versioned JSON telemetry validation with explicit units.
