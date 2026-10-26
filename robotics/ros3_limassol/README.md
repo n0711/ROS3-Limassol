@@ -63,6 +63,31 @@ The `--vlm` argument is optional. This is an **offline** research comparison,
 not a VLM inference implementation, field-validated detector or navigation
 controller. Read the [evidence and multimodal guide](docs/MULTIMODAL.md).
 
+## Local LLM diagnostics (optional, read-only)
+
+ROS3 can run a **real local Ollama chat model** to explain validated LinkStatus
+and aggregate offline recording evidence. Ollama and model weights are separately
+installed; automated CI uses a fake model response and does not download weights.
+
+From this package directory after exporting evidence, with the local model
+server running at `127.0.0.1:11434`:
+
+```bash
+python -m ros3_limassol.llm_diagnostics --evidence evidence.json --model llama3.2
+```
+
+In a sourced ROS 2 workspace (repository root), run the normal
+`usv_demo.launch.py` and a separate read-only observer:
+
+```bash
+ros2 launch ros3_limassol llm_diagnostics.launch.py model:=llama3.2
+```
+
+Inspect `/limassol/usv01/llm_diagnostics` (`std_msgs/msg/String`).
+The LLM does not issue commands, validate vehicle safety, or implement
+Vision-Language-Action. Read the full [LLM integration guide](docs/LLM.md)
+before interpreting output.
+
 ## ROS 2 Humble on Ubuntu 22.04
 
 Run the following commands from the **repository root**, not the package directory.
