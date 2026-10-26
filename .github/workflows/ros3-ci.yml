@@ -57,7 +57,7 @@ jobs:
       - name: Install test and launch tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-jazzy-launch-ros ros-jazzy-rclpy ros-jazzy-std-msgs
+          apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-jazzy-launch-ros ros-jazzy-rclpy ros-jazzy-std-msgs ros-jazzy-sensor-msgs
       - name: Build ROS package and run the DDS test
         run: |
           source /opt/ros/jazzy/setup.bash
@@ -67,6 +67,7 @@ jobs:
           ros2 launch ros3_limassol usv_demo.launch.py --show-args
           ros2 launch ros3_limassol record_telemetry.launch.py --show-args
           ros2 launch ros3_limassol llm_diagnostics.launch.py --show-args
+          ros2 launch ros3_limassol vlm_observer.launch.py --show-args
           python3 robotics/ros3_limassol/tools/check_ros_quickstart.py
           colcon test --packages-select ros3_limassol --event-handlers console_direct+
           colcon test-result --verbose
@@ -82,7 +83,7 @@ jobs:
       - name: Install test and launch tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-humble-launch-ros ros-humble-rclpy ros-humble-std-msgs
+          apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-pytest ros-humble-launch-ros ros-humble-rclpy ros-humble-std-msgs ros-humble-sensor-msgs
       - name: Build ROS package and run the DDS tests
         run: |
           source /opt/ros/humble/setup.bash
@@ -92,6 +93,7 @@ jobs:
           ros2 launch ros3_limassol usv_demo.launch.py --show-args
           ros2 launch ros3_limassol record_telemetry.launch.py --show-args
           ros2 launch ros3_limassol llm_diagnostics.launch.py --show-args
+          ros2 launch ros3_limassol vlm_observer.launch.py --show-args
           python3 robotics/ros3_limassol/tools/check_ros_quickstart.py
           colcon test --packages-select ros3_limassol --event-handlers console_direct+
           colcon test-result --verbose
