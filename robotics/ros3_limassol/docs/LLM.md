@@ -103,6 +103,11 @@ or navigation correctness. This LLM module performs **text-only** local
 inference over ROS3 state/evidence, not VLM or Vision-Language-Action
 (VLA) control. They are separate research interfaces.
 
+The separate [VLM camera observer](VLM.md) **does** invoke a vision-capable
+local model on bounded JPEG/PNG data. It is opt-in, read-only, and not a
+VLA controller. The older `multimodal.py` remains a declaration/evidence
+aggregation tool rather than a running VLM.
+
 ## What CI establishes
 
 - Python tests exercise a mocked Ollama response, strict JSON validation,
