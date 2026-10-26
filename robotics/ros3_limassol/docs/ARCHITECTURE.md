@@ -1,9 +1,31 @@
 # Architecture
 
-ROS3-Limassol is an OpenPELAOS project. Version 0.1.0 has a transport-independent
-Python core and an optional ROS 2 adapter. The core imports only Python's
-standard library. ROS provides discovery, serialization of the outer message,
-and transport between nodes in ROS mode.
+ROS3-Limassol is an experimental OpenPELAOS receiver-arrival monitoring project.
+The Python telemetry monitor is transport-independent and requires only the
+standard library. An optional ROS 2 Humble/Jazzy adapter provides a simulator
+publisher, a status observer, and an independent receive-only recorder. An
+experimental Rust core implements separate validation/replay utilities; it is
+not wired into the Python ROS 2 nodes. This project is not an official ROS
+version or a ROS 2 replacement.
+
+## What each component tells you
+
+- **Python demo:** tests liveness changes using synthetic messages and a virtual
+  receiver clock. It does not test DDS, Wi-Fi, radio links, or a physical robot.
+- **ROS 2 observer:** subscribes to best-effort telemetry and publishes status
+  based on the receiver's accepted arrivals.
+- **ROS 2 recorder:** separately saves delivered subscriber callbacks and
+  independent silence observations for offline replay. It does not control
+  the robot or guarantee that it recorded every transmitted message.
+- **Offline replay/evidence:** analyzes *recorded* receiver observations; its
+  state transitions are evaluated on the observation clock, not inferred between
+  ticks.
+- **Rust core:** experimental alternative validation/replay implementation with
+  optional authenticated envelopes; the Python ROS 2 adapter does not accept
+  those signed envelopes.
+
+All modes distinguish **receiver arrival recency** from source measurement
+freshness, delivery ratio, network delay, navigation correctness, and safety.
 
 ## Data flow
 
@@ -92,7 +114,8 @@ does not run inside the live liveness monitor.
 - [Official ROS distributions](https://docs.ros.org/en/jazzy/Releases.html): Jazzy support period.
 
 References checked on 23 October 2026. The code is an independent implementation;
-the documentation does not establish that this project's ROS graph has passed.
+executed software checks are tracked separately in [VALIDATION.md](VALIDATION.md)
+and the repository's CI jobs. Those synthetic checks are not field validation.
 The recorder's node/timer/cleanup APIs were also checked against the official
 [Jazzy rclpy source](https://github.com/ros2/rclpy/blob/jazzy/rclpy/rclpy/node.py)
 on 24 October 2026. Executed checks are recorded in [VALIDATION.md](VALIDATION.md).

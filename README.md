@@ -18,6 +18,12 @@ A robot sends telemetry to a receiver. ROS3-Limassol validates incoming messages
 
 **Important:** `HEALTHY` describes *receiver arrival recency*, not vehicle safety, sensor freshness, navigation accuracy, network latency, or delivery reliability. The prototype does not send vehicle commands.
 
+## Choose a starting point
+
+- **Just want to understand it?** Run the Python demo below; it requires no ROS installation.
+- **Already use ROS 2?** Follow the [ROS package guide](robotics/ros3_limassol/README.md) for Humble/Jazzy setup and topic recording.
+- **Interested in Rust?** See the [experimental Rust core](robotics/ros3_core/README.md); it does not connect to ROS 2 by itself.
+
 ## Quick start (no ROS required)
 
 Requires Python 3.10+; the core uses only the standard library.
@@ -61,7 +67,7 @@ See [recording format](robotics/ros3_limassol/docs/RECORDING.md) and [evidence g
 - Arrival-based `WAITING`, `HEALTHY`, and `STALE` states.
 - Deterministic simulated communication blackout and recovery.
 - Streaming JSONL recording and replay.
-- Optional receive-only ROS 2 Humble/Jazzy publisher, observer, and recorder.
+- Optional ROS 2 Humble/Jazzy simulator publisher and link observer, plus a separate receive-only recorder.
 - Experimental Rust validation, monitoring, and replay tools.
 
 The Rust core has optional HMAC-SHA256 envelopes; the Python ROS adapter does **not** support those signed envelopes yet.
