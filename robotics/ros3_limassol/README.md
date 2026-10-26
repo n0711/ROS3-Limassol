@@ -50,6 +50,19 @@ the exact input bytes; it does not authenticate the recording or establish its
 provenance. A failed read emits no JSON report. See the
 [evidence specification](docs/EVIDENCE.md) for interpretation and limitations.
 
+## Optional read-only offline analytics
+
+```sh
+python -m ros3_limassol.analysis features evidence.json > features.json
+python -m ros3_limassol.analysis fit train01.json train02.json train03.json train04.json train05.json > baseline-model.json
+python -m ros3_limassol.analysis score baseline-model.json heldout.json > anomaly-score.json
+python -m ros3_limassol.multimodal evidence.json vera-vision.json --vlm vera-vlm.json > multimodal-report.json
+```
+
+The `--vlm` argument is optional. This is an **offline** research comparison,
+not a VLM inference implementation, field-validated detector or navigation
+controller. Read the [evidence and multimodal guide](docs/MULTIMODAL.md).
+
 ## ROS 2 Humble on Ubuntu 22.04
 
 Run the following commands from the **repository root**, not the package directory.
