@@ -27,6 +27,25 @@ version or a ROS 2 replacement.
 All modes distinguish **receiver arrival recency** from source measurement
 freshness, delivery ratio, network delay, navigation correctness, and safety.
 
+## Optional local language-model diagnostics
+
+A separate `LLMDiagnosticNode` subscribes to validated `link_status`
+messages (reliable ROS 2 status QoS). It never subscribes to raw telemetry,
+positions or images. On a state change, it submits a bounded status snapshot
+to a single worker for actual text inference through the fixed local Ollama
+`/api/chat` endpoint. A ROS timer publishes the resulting bounded JSON
+hypothesis on `llm_diagnostics` without blocking monitor callbacks.
+Transitions are rate-limited and only one pending observation is kept.
+Stale results and malformed responses are dropped; model outages never
+change `LinkMonitor` behavior. No actuation, navigation or ROS tool calls
+are implemented. The model's text is unverified.
+
+Offline `llm_diagnostics.py` can summarize a checked evidence-v1 report by
+extracting existing `analysis.evidence_features` aggregates; it does not
+send raw recording files or coordinates to the model. This is genuine
+**LLM** inference, but not VLM/VLA processing or an official ROS successor.
+See [LLM.md](LLM.md) for its precise limits.
+
 ## Data flow
 
 1. `UsvSimulator` produces synthetic geodetic telemetry and drops samples during
