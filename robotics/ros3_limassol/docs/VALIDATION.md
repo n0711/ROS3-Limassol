@@ -1,5 +1,21 @@
 # Validation record
 
+## Installed ROS package smoke check (configured 26 October 2026)
+
+Both ROS CI jobs now invoke `tools/check_ros_quickstart.py` after building and
+sourcing their respective Humble/Jazzy installations. This is a separate check
+from the ROS graph unit tests. It starts in a temporary directory, asks the
+`ros2` CLI to discover the installed node entry points, then runs the public
+Python demo, replay, and evidence command-line interfaces. The script checks the
+synthetic state transitions, accepted/rejected counts, recording observation
+counts, and SHA-256 fingerprint. A nonzero result fails the CI job.
+
+**Status:** this describes configured checks, not a verified pass. Refer to the
+corresponding GitHub Actions job outcome before claiming success. It does not
+measure DDS timing, network delay, sensor freshness, field reliability, or
+vehicle safety. The source-tree unit tests and DDS graph tests are still required.
+
+
 ## Recording input validation follow-up, 25 October 2026
 
 The local suite discovers 47 tests: 44 pass and three ROS integration tests are
