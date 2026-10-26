@@ -23,6 +23,17 @@ non-sensitive observation traces, measured inference latency, and human-
 reviewed diagnostic correctness while keeping autonomy and actuation out
 of scope.
 
+## Opt-in camera vision milestone
+
+A separate ROS 2 compressed-image observer can invoke a **real local vision
+model** and publish read-only scene descriptions. It is not calibrated
+perception, tracker-validated recognition or Vision-Language-Action control.
+Next measure end-to-end inference time with a declared local model, record
+held-out evaluation data with consent, compare against a deterministic
+perception baseline, and quantify camera/telemetry clock alignment before
+attempting multimodal research claims. The existing telemetry monitor remains
+independent of the VLM.
+
 ## Next steps
 
 1. Retain recorder CI evidence, then collect a shareable ROS recording on a
