@@ -189,8 +189,20 @@ colcon test-result --verbose
 ```
 
 The Humble and Jazzy CI jobs each build the package, inspect both launch files,
-and run all 45 tests, including DDS blackout/recovery, live recording/replay and
-recorder configuration/file-protection tests. Consult actual job results and the
+run the installed-package quickstart smoke check, and execute ROS/DDS integration
+tests, including blackout/recovery, live recording/replay and recorder
+configuration/file-protection checks. The exact test count can change.
+
+To check an **installed** ROS package manually from the repository root, after
+sourcing the ROS distribution and `install/setup.bash`, run:
+
+```bash
+python3 robotics/ros3_limassol/tools/check_ros_quickstart.py
+```
+
+This test checks package discovery, synthetic demo/replay agreement, and the
+SHA-256 evidence report from a temporary directory, not physical telemetry
+or network performance. Consult actual job results and the
 [validation record](docs/VALIDATION.md).
 
 The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
