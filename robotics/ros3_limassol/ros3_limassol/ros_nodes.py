@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Optional ROS 2 transport adapter; the domain logic is ROS-independent."""
 
+import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import rclpy
 from rclpy.clock import Clock, ClockType
@@ -10,6 +12,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import String
 
+from .llm_diagnostics import explain_status, validate_status
 from .live_recorder import LiveRecorder, UnrecordablePayloadError
 from .monitor import LinkMonitor
 from .recording import MAX_RECORDS
@@ -136,6 +139,81 @@ class TelemetryRecorderNode(Node):
             super().destroy_node()
 
 
+
+class LLMDiagnosticNode(Node):
+    """Read-only ROS status explanation via a separately running local Ollama.
+
+    A worker performs inference outside ROS callbacks; only the ROS timer
+    publishes results. This node never publishes telemetry, commands, or
+    safety decisions. A single pending change bounds work during flapping.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__("llm_diagnostics", **kwargs)
+        self.robot_id = self.declare_parameter("robot_id", "usv01").value
+        self.model = self.declare_parameter("model", "llama3.2").value
+        self.timeout_s = finite_number(
+            self.declare_parameter("timeout_s", 8.0).value, "timeout_s"
+        )
+        self.min_interval_s = finite_number(
+            self.declare_parameter("min_interval_s", 3.0).value, "min_interval_s"
+        )
+        if not 0 < self.timeout_s <= 30 or not 0.1 <= self.min_interval_s <= 3600:
+            raise ValueError("invalid LLM inference timeout or minimum interval")
+        self.publisher = self.create_publisher(String, "llm_diagnostics", status_qos())
+        self.subscription = self.create_subscription(
+            String, "link_status", self._receive_status, status_qos()
+        )
+        self._last_seen_state = None
+        self._queued = None
+        self._future = None
+        self._next_allowed = 0.0
+        self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ros3-llm")
+        self._steady_clock = Clock(clock_type=ClockType.STEADY_TIME)
+        self.timer = self.create_timer(0.2, self._poll, clock=self._steady_clock)
+
+    def _receive_status(self, message):
+        try:
+            status = validate_status(message.data)
+        except ValueError:
+            self.get_logger().warning("Invalid link status ignored by LLM observer")
+            return
+        if status["robot_id"] != self.robot_id:
+            return
+        if status["state"] == self._last_seen_state:
+            return
+        self._last_seen_state = status["state"]
+        self._queued = status
+
+    def _poll(self):
+        if self._future is not None and self._future.done():
+            completed = self._future
+            self._future = None
+            try:
+                report = completed.result()
+                # A delayed hypothesis about an old state is not current status.
+                if report["observed_state"] == self._last_seen_state:
+                    self.publisher.publish(String(data=json.dumps(
+                        report, sort_keys=True, allow_nan=False,
+                    )))
+            except (OSError, ValueError, TypeError) as exc:
+                self.get_logger().warning("Read-only LLM diagnosis unavailable: %s" % exc)
+        now = time.monotonic()
+        if self._future is None and self._queued is not None and now >= self._next_allowed:
+            status = self._queued
+            self._queued = None
+            self._next_allowed = now + self.min_interval_s
+            self._future = self._worker.submit(
+                explain_status, status, self.model, timeout_s=self.timeout_s,
+            )
+
+    def destroy_node(self):
+        try:
+            self._worker.shutdown(wait=False, cancel_futures=True)
+        finally:
+            super().destroy_node()
+
+
 def _spin(factory, args):
     rclpy.init(args=args)
     node = None
@@ -164,3 +242,10 @@ def recorder_main(args=None):
         _spin(TelemetryRecorderNode, args)
     except (OSError, ValueError) as exc:
         raise SystemExit(f"telemetry recorder: {exc}") from exc
+
+
+def llm_diagnostics_main(args=None):
+    try:
+        _spin(LLMDiagnosticNode, args)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"LLM diagnostics: {exc}") from exc
