@@ -1,5 +1,23 @@
 # Validation record
 
+## Local compressed-image VLM observer (introduced 26 October 2026)
+
+This change adds an opt-in `sensor_msgs/msg/CompressedImage` ROS 2
+subscriber, independent bounded JPEG/PNG validation, actual local Ollama
+vision `/api/chat` request construction, and a separate read-only
+`vlm_diagnostics` output topic. Python tests mock the model response and
+exercise input-size, image-header, output-schema and CLI limits; ROS 2
+tests exercise a DDS compressed-frame-to-diagnostic round trip using a
+fake inference result. The optional ROS VLM launch is checked in Humble
+and Jazzy CI, with `sensor_msgs` installed in both environments.
+
+**Configured does not mean passed:** consult the specific GitHub Actions
+run before claiming execution. Even successful CI does not verify a
+vision model's accuracy, real camera throughput, synchronized multimodal
+fusion, object-tracker agreement, physical hardware, or safety.
+See [VLM.md](VLM.md).
+
+
 ## Local LLM diagnostic integration (introduced 26 October 2026)
 
 `llm_diagnostics.py` makes a real local Ollama `/api/chat` request at
