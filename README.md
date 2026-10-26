@@ -61,6 +61,18 @@ It does **not** establish network delay, delivery reliability, actual
 sensor freshness or field performance. See the
 [offline evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
 
+## Offline anomaly and vision evidence (experimental)
+
+The read-only, standard-library `ros3_limassol.analysis` tool extracts
+aggregate receiver-observation features and fits an exploratory median/MAD
+baseline from at least five distinct training recordings. Optional
+`ros3_limassol.multimodal` bundles those features with independent VERA-MOT
+tracker summaries and declared external-VLM annotations. No real VLM runs in
+this repository; synchronized clocks, GNSS-denied localization, navigation
+and hardware validation remain unverified.
+
+See the [multimodal research guide](robotics/ros3_limassol/docs/MULTIMODAL.md).
+
 ## Current implementation
 
 - Strict version-1 JSON telemetry with explicit units and bounded payloads.
