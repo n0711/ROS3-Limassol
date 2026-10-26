@@ -17,7 +17,7 @@ def main():
     wheel = wheels[0]
     with zipfile.ZipFile(wheel) as archive:
         members = archive.namelist()
-        for suffix in ("ros3_limassol/evidence.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
+        for suffix in ("ros3_limassol/analysis.py", "ros3_limassol/evidence.py", "ros3_limassol/replay.py", "ros3_limassol/recording.py",
                        "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/package.xml", "/LICENSE",
                        "/NOTICE", "/resource_index/packages/ros3_limassol"):
@@ -48,6 +48,14 @@ def main():
                 evidence["silence_tick_count"] != 30 or
                 evidence["observed_stale_to_healthy_recoveries"] != 1):
             raise RuntimeError("installed evidence report did not match the experiment")
+        # Verify analysis from the installed wheel and outside the checkout.
+        report_path = root / "evidence.json"
+        report_path.write_text(evidence_json, encoding="utf-8")
+        feature_json = subprocess.check_output([
+            sys.executable, "-m", "ros3_limassol.analysis", "features", str(report_path),
+        ], cwd=root, env=env, text=True)
+        if json.loads(feature_json)["feature_version"] != 1:
+            raise RuntimeError("installed wheel analysis features failed")
         events = [json.loads(line) for line in demo.splitlines()]
         if events[-1]["accepted"] != 51 or events[-1]["rejected"] != 0:
             raise RuntimeError("installed demo did not reproduce the paper's counts")
