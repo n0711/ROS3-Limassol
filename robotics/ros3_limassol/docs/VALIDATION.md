@@ -1,5 +1,22 @@
 # Validation record
 
+## Local LLM diagnostic integration (introduced 26 October 2026)
+
+`llm_diagnostics.py` makes a real local Ollama `/api/chat` request at
+`127.0.0.1:11434`, with non-streaming JSON output, strict parsing, output
+bounds and inference timeouts. CI uses a mocked response; no external model
+is installed or run in CI. The ROS 2 `LLMDiagnosticNode` runs model calls
+off the callback thread, publishes to `llm_diagnostics`, and has no actuator
+publisher or tool-call interface. New tests cover bounded status filtering,
+model request contracts, schema rejection, and a ROS topic round trip
+with mocked inference.
+
+**This documents configured checks, not passed results until a CI run is
+observed.** Even when green, neither actual model accuracy, latency under
+field load, field telemetry, autonomy nor safety is established. See
+[LLM.md](LLM.md).
+
+
 ## Installed ROS package smoke check (configured 26 October 2026)
 
 Both ROS CI jobs now invoke `tools/check_ros_quickstart.py` after building and
