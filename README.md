@@ -92,6 +92,24 @@ CI uses a mock, not downloaded model weights. Output is **unverified diagnostic
 text**, not autonomy, VLM/VLA, or field validation. See the
 [LLM integration guide](robotics/ros3_limassol/docs/LLM.md).
 
+## Local VLM camera inspection (experimental)
+
+ROS3 now has an **opt-in camera-to-vision-model path**: a ROS 2
+`sensor_msgs/msg/CompressedImage` subscriber samples bounded JPEG/PNG frames,
+uses a separately installed **local** Ollama vision model, and publishes a
+read-only `vlm_diagnostics` topic. It does **not** require ROS 2 to run a
+single-file image inspection:
+
+```bash
+# From robotics/ros3_limassol; requires a local vision model in Ollama
+python -m ros3_limassol.vlm_diagnostics --image frame.jpg --model gemma3:4b
+```
+
+The optional ROS launch is `vlm_observer.launch.py`. It never sends vehicle
+commands or connects its descriptions to navigation. Tests use a fake model;
+real-world visual accuracy is **not validated**. See the
+[VLM setup and boundaries](robotics/ros3_limassol/docs/VLM.md).
+
 ## What is implemented?
 
 - Bounded, versioned JSON telemetry validation with explicit units.
