@@ -6,9 +6,11 @@ replay timeout, installed-wheel verification and CI jobs. Version 0.3.0 adds a
 receive-only ROS recorder with independent silence ticks and a DDS-to-replay
 blackout/recovery test.
 
-The 0.2.0 main-branch [CI run](https://github.com/n0711/ROS3-Limassol/actions/runs/40036934415)
+The historical 0.2.0 main-branch [CI run](https://github.com/n0711/ROS3-Limassol/actions/runs/40036934415)
 passed all four jobs, including the Jazzy build and original DDS test. Version
-0.3.0 adds recorder checks; consult its own PR checks for their execution status.
+0.3.0 added live recorder checks; 0.3.1 added Humble compatibility. Consult
+[validation](VALIDATION.md) and the [current CI runs](https://github.com/n0711/ROS3-Limassol/actions)
+for results associated with each commit. Configured jobs are not proof of a pass.
 
 ## Next steps
 
