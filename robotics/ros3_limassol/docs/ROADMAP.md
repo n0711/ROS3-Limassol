@@ -12,6 +12,17 @@ passed all four jobs, including the Jazzy build and original DDS test. Version
 [validation](VALIDATION.md) and the [current CI runs](https://github.com/n0711/ROS3-Limassol/actions)
 for results associated with each commit. Configured jobs are not proof of a pass.
 
+## LLM diagnostics milestone
+
+The optional local Ollama text interpreter is a **read-only observer** of
+valid ROS3 receiver-arrival status and offline aggregate features. Model
+availability does not affect liveness monitoring. It is not real-world
+robot intelligence, a trained perception model, or VLA autonomy. To make
+stronger research claims, compare several local models using held-out
+non-sensitive observation traces, measured inference latency, and human-
+reviewed diagnostic correctness while keeping autonomy and actuation out
+of scope.
+
 ## Next steps
 
 1. Retain recorder CI evidence, then collect a shareable ROS recording on a
