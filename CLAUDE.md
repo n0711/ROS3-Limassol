@@ -52,14 +52,31 @@ Virtual environments, `.env` files (use `.env.example`), recordings
 (`*.jsonl`), databases, `*.ros3-key` keys, build output, model weights, student
 data or personal academic records.
 
+## Working alongside other agents
+
+Several agent sessions work on this repository at once.
+
+- Work from GitHub issues. Before starting, check open pull requests and recent
+  `main` commits, then **claim the issue** with a comment that links your
+  session. Do not start an issue someone else has claimed.
+- One issue, one branch, one pull request that references the issue.
+- Reuse the repository's tools (`tools/`, `ros3_limassol.impairment`) instead of
+  writing parallel ones.
+- Leave decisions to the maintainer: defaults, schema or recording changes,
+  licences, removing components, security design. List them in the pull request
+  under "Decision left to the maintainer" and don't make them yourself.
+- Never merge pull requests yourself.
+
 ## Current priorities
 
-1. Validate the MAVLink bridge against ArduPilot or PX4 SITL and record the
-   result in `robotics/ros3_limassol/docs/VALIDATION.md`. Do not claim it before it has been run.
-2. Multiple robot namespaces with controlled delay, jitter, loss and restarts
-   (roadmap step 2).
-3. Physical link evaluation: companion computer and marine telemetry link
-   (roadmap step 4).
+The plan and its maintainer decisions are tracked in issue #36. In order:
+
+1. Validate the impairment model against live SITL traffic (#33).
+2. Multiple robots: ROS 2 namespaces (#34), then multi-vehicle SITL.
+3. MAVLink 2 signature verification in the bridge, once the maintainer approves
+   the design. It is required before any radio link.
+4. Physical link evaluation: companion computer and marine telemetry link
+   (roadmap step 4). This needs the maintainer's hardware.
 
 Prefer these over new LLM/VLM features. Ask the maintainer before starting work
 outside this list, or before any change to licences, the telemetry schema
