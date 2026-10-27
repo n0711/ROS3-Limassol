@@ -53,7 +53,7 @@ from udp_impairment_relay import select_model  # noqa: E402
 
 
 def load_relay_log(lines):
-    log = {"t0_wall_ns": None, "samples": [], "summary": None}
+    log = {"t0_wall_ns": None, "samples": [], "summary": None, "scenario": None}
     for number, line in enumerate(lines, 1):
         if not line.strip():
             continue
@@ -62,7 +62,11 @@ def load_relay_log(lines):
         except ValueError as exc:
             raise ValueError(f"relay log line {number}: invalid JSON") from exc
         event = record.get("event")
-        if event == "t0":
+        if event == "scenario":
+            if log["scenario"] is not None:
+                raise ValueError("relay log has more than one scenario record")
+            log["scenario"] = record
+        elif event == "t0":
             log["t0_wall_ns"] = record["wall_ns"]
         elif event == "sample":
             log["samples"].append(record)
@@ -71,6 +75,34 @@ def load_relay_log(lines):
     if log["t0_wall_ns"] is None:
         raise ValueError("relay log has no t0 record; the run never started impairing")
     return log
+
+
+def validate_relay_log(relay, scenario, model):
+    """Refuse comparisons against a different relay scenario or incomplete sample log.
+
+    The relay records its actual settings at launch. Checking them prevents a
+    plausible-looking result from accidentally pairing different seeds, link
+    profiles, durations or robots with the supplied scenario file.
+    """
+    recorded = relay["scenario"]
+    if recorded is None:
+        raise ValueError("relay log has no scenario record")
+    expected = {
+        "seed": scenario.seed, "duration_s": scenario.duration_s,
+        "robot_id": model.robot_id, "delay_s": model.delay_s,
+        "jitter_s": model.jitter_s, "loss": model.loss,
+        "burst_loss": {"enter": model.burst_enter, "exit": model.burst_exit},
+        "duplicate": model.duplicate, "outages": [list(o) for o in model.outages],
+    }
+    for field, value in expected.items():
+        if recorded.get(field) != value:
+            raise ValueError(f"relay log scenario mismatch for {field}: "
+                             f"expected {value!r}, got {recorded.get(field)!r}")
+    if not relay["samples"]:
+        raise ValueError("relay log contains no position samples")
+    for index, sample in enumerate(relay["samples"]):
+        if sample.get("k") != index:
+            raise ValueError(f"relay sample index out of sequence at position {index}")
 
 
 def live_events(recording_text, robot_id, stale_after_s, t0_wall_ns, duration_s):
@@ -170,6 +202,7 @@ def _side(matched, unexplained, duration_s):
 def compare(scenario, relay_lines, recording_text, robot_id=None):
     model = select_model(scenario, robot_id)
     relay = load_relay_log(relay_lines)
+    validate_relay_log(relay, scenario, model)
     events, state_at_t0, alignment = live_events(
         recording_text, model.robot_id, scenario.stale_after_s, relay["t0_wall_ns"],
         scenario.duration_s)
