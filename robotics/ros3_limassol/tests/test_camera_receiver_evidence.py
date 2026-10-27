@@ -32,7 +32,7 @@ class CameraReceiverEvidenceTests(unittest.TestCase):
         self.assertFalse(out["claims"]["isaac_sim_origin_verified"])
         self.assertFalse(out["claims"]["actuation_authority"])
         raw = json.dumps(out)
-        self.assertNotIn("payload", raw.lower())
+        self.assertNotIn('"data":', raw)
         self.assertNotIn("image_sha256", raw)
         self.assertNotIn(image.hex(), raw)
 
