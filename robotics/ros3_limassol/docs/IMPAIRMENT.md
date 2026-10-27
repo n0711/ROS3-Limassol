@@ -240,6 +240,16 @@ perfectly periodic source gives biased estimates of recovery and false alarms.
   than 5 s (5.01 s and 5.26 s), a single long burst that aged the battery report
   past `--battery-max-age`.
 
+**Reproducibility and provenance.** To audit a run, preserve the exact
+scenario JSON (including seed), relay JSONL log, bridge JSONL recording,
+`compare_impairment.py --json` result, software commit, and SITL/MAVProxy
+versions. The comparison tool checks the relay log's recorded scenario
+settings and sample indices before scoring, so it rejects accidental
+cross-seed or cross-profile comparisons. The 20-run aggregate table above
+reports runs described in the validation record; **raw per-run logs and
+recordings are not committed in this PR**, so the aggregate cannot be
+independently re-scored from the repository alone.
+
 ## What this does not establish
 
 The live comparison covers:
