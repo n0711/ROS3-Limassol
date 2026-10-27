@@ -91,4 +91,5 @@ protocol versions.
   supported. Run one bridge per system ID.
 - Validated in automated tests and a local UDP run with a pymavlink sender. No
   ArduPilot/PX4 SITL run, companion computer or physical vehicle link has been
-  verified.
+  verified. The [SITL runbook](SITL.md) describes the pending
+  ArduPilot validation and its outage relay and comparison tools.
