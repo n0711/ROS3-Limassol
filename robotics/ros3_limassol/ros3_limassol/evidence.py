@@ -14,7 +14,7 @@ import hashlib
 import json
 import sys
 
-from .monitor import LinkMonitor
+from .monitor import LATE_SAMPLE_POLICIES, LinkMonitor
 from .recording import read_observations
 
 MAX_REPORTED_TRANSITIONS = 256
@@ -36,14 +36,16 @@ class _HashedUtf8Lines:
         return raw.decode("utf-8")
 
 
-def build_evidence(binary_stream, robot_id="usv01", stale_after_s=1.0):
+def build_evidence(binary_stream, robot_id="usv01", stale_after_s=1.0,
+                   late_samples="reject"):
     """Return reproducible counts and observed state changes after full parsing.
 
     A failed parse raises ValueError and never returns a partial report.
     Memory stays bounded by the monitor's session history and the most recent
     MAX_REPORTED_TRANSITIONS changes, even for large valid recordings.
     """
-    monitor = LinkMonitor(robot_id=robot_id, stale_after_s=stale_after_s)
+    monitor = LinkMonitor(robot_id=robot_id, stale_after_s=stale_after_s,
+                          late_samples=late_samples)
     reader = _HashedUtf8Lines(binary_stream)
     previous = monitor.snapshot(0.0).state
     transitions = deque(maxlen=MAX_REPORTED_TRANSITIONS)
@@ -100,6 +102,8 @@ def build_evidence(binary_stream, robot_id="usv01", stale_after_s=1.0):
         "recording_sha256": reader.digest.hexdigest(),
         "robot_id": monitor.robot_id,
         "stale_after_s": monitor.stale_after_s,
+        "late_samples": monitor.late_samples,
+        "late_accepted": monitor.late_accepted,
         "observation_count": observations,
         "payload_observation_count": payload_observations,
         "silence_tick_count": silence_ticks,
@@ -132,10 +136,13 @@ def main(args=None):
     parser.add_argument("recording", help="existing version-1 JSONL recording")
     parser.add_argument("--robot-id", default="usv01")
     parser.add_argument("--stale-after", type=float, default=1.0)
+    parser.add_argument("--late-samples", choices=LATE_SAMPLE_POLICIES, default="reject",
+                        help="late in-session samples: reject (default) or count for liveness")
     options = parser.parse_args(args)
     try:
         with open(options.recording, "rb") as stream:
-            result = build_evidence(stream, options.robot_id, options.stale_after)
+            result = build_evidence(stream, options.robot_id, options.stale_after,
+                                    options.late_samples)
         # Print only after EOF validation so malformed files yield no partial JSON.
         print(json.dumps(result, allow_nan=False, sort_keys=True, indent=2))
     except (OSError, ValueError) as exc:

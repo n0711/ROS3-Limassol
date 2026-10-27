@@ -26,6 +26,10 @@ the default `usv01`, another robot's recording is rejected as `unexpected_robot`
              "duplicate": 0.02, "outages": [[20, 24]], "restarts": [40]}]}
 ```
 
+The optional top-level `late_samples` (`reject`, the default, or `liveness`)
+selects the monitor's [late-sample policy](TELEMETRY.md#late-samples) for every
+robot in the run, and is echoed in the report.
+
 Unknown keys, overlapping outages, duplicate robot IDs and out-of-range values
 are rejected. Per robot (all optional except `robot_id`):
 
@@ -105,8 +109,10 @@ Observations from this synthetic sweep:
    `duplicate_or_out_of_order`, because the monitor requires strictly
    increasing sequence numbers. Liveness is unaffected, since accepted samples
    still refresh it, but the rejection count then overstates link damage.
-   Whether to accept late in-session samples for liveness is an open design
-   question; this tool only measures it.
+   The opt-in `late_samples: "liveness"` policy accepts such delayed, unseen
+   samples. In this model it removes these rejections without raising maximum
+   detection latency (comparison in [VALIDATION.md](VALIDATION.md)); the
+   default remains `reject`.
 
 ## Live comparison on ArduPilot SITL
 

@@ -14,6 +14,7 @@ def generate_launch_description():
         DeclareLaunchArgument("stale_after_s", default_value="1.0"),
         DeclareLaunchArgument("blackout_start_s", default_value="2.0"),
         DeclareLaunchArgument("blackout_duration_s", default_value="3.0"),
+        DeclareLaunchArgument("late_samples", default_value="reject"),
         Node(
             package="ros3_limassol", executable="sim_usv", output="screen",
             namespace=["limassol/", robot_id],
@@ -33,6 +34,9 @@ def generate_launch_description():
             parameters=[common, {
                 "stale_after_s": ParameterValue(
                     LaunchConfiguration("stale_after_s"), value_type=float
+                ),
+                "late_samples": ParameterValue(
+                    LaunchConfiguration("late_samples"), value_type=str
                 ),
             }],
         ),
