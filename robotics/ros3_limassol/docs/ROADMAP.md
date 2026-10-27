@@ -61,9 +61,10 @@ multimodal fusion.
    liveness, is answered by an opt-in `late_samples = liveness` policy
    ([TELEMETRY.md](TELEMETRY.md#late-samples)); `reject` stays the default.
 3. ~~Add a receive-only MAVLink adapter with explicit message-to-schema mappings.~~
-   Initial UDP adapter added ([MAVLINK.md](MAVLINK.md)). Next: record an
-   ArduPilot or PX4 SITL session through it, then consider `GPS_RAW_INT` fix
-   quality and MAVLink 2 signature verification.
+   Initial UDP adapter added ([MAVLINK.md](MAVLINK.md)) and run against
+   ArduPilot Rover 4.6.3 SITL with scripted outages ([VALIDATION.md](VALIDATION.md)).
+   Next: MAVLink 2 signature verification before any radio link, and possibly
+   `GPS_RAW_INT` fix quality. PX4 SITL is not yet covered.
 4. Evaluate a companion computer and a physical marine-robotics telemetry link.
 
 Vehicle commands and autonomy are outside the current prototype. Arrival liveness

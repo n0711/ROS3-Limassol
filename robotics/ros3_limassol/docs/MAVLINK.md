@@ -22,11 +22,29 @@ The bridge binds a socket and only receives. The package contains no MAVLink
 encoder and no send call, and a test checks this. Consequently it never sends
 heartbeats, requests data streams, or sends parameters, missions or commands.
 
-The sender must already push MAVLink to the bridge's address. For ArduPilot
-SITL, add `--out udp:127.0.0.1:14550`; for a MAVLink router, add a UDP client
-endpoint pointing at the bridge. Some autopilot links only stream data after a
-ground station requests it; with such a link, run a GCS or router that requests
-streams and forwards a copy to the bridge.
+The sender must already push MAVLink to the bridge's address. ArduPilot's
+`sim_vehicle.py` already gives MAVProxy `--out 127.0.0.1:14550`, the bridge's
+default address; add another `--out` only for a different address, since a
+second output to the same address delivers every message twice. For a MAVLink
+router, add a UDP client endpoint pointing at the bridge. Some autopilot links
+only stream data after a ground station requests it; with such a link, run a
+GCS or router that requests streams and forwards a copy to the bridge.
+
+## Choosing `--stale-after`
+
+Only `GLOBAL_POSITION_INT` produces samples, so `--stale-after` (default 1.0 s)
+must clearly exceed the slowest interval at which the vehicle sends that
+message, plus jitter. Detection then takes about `--stale-after` plus up to one
+`--tick` (0.5 s by default).
+
+ArduPilot Rover's default `SRx_POSITION` stream rate is **1 Hz**. In the
+[SITL validation](VALIDATION.md), position arrived at 1 Hz for the first 11 s of
+position data, until MAVProxy's 4 Hz request took effect. Gaps of 0.990–1.009 s
+straddled the 1.0 s default. No false `STALE` occurred, but only because no tick
+landed in the few milliseconds when the age exceeded 1.0 s. Either have the
+ground station or router request a higher rate (for example `SRx_POSITION` 4, or
+MAVProxy `--streamrate`), or set `--stale-after` to several position intervals,
+such as 3 s for a 1 Hz stream.
 
 ## Message mapping
 
@@ -59,6 +77,12 @@ mapping counter incremented when:
 
 Withheld samples are absent from recordings, so a source that only sends
 position without battery appears as silence. Check the summary counters.
+
+After an outage longer than `--battery-max-age`, the first position can arrive
+before a fresh `SYS_STATUS` and is then withheld as `battery_stale`, delaying
+recovery by up to one position interval. In SITL this happened once after the
+5 s outage: `HEALTHY` returned 0.32 s after traffic resumed, versus 0.08 s after
+the 2 s outage.
 
 ## Framing
 
@@ -99,7 +123,7 @@ protocol versions.
   valid frame that follows it; that frame is lost, not misread.
 - MAVLink 2 signing, serial ports, TCP, and multiple vehicles per bridge are not
   supported. Run one bridge per system ID.
-- Validated in automated tests and a local UDP run with a pymavlink sender. No
-  ArduPilot/PX4 SITL run, companion computer or physical vehicle link has been
-  verified. The [SITL runbook](SITL.md) describes the pending
-  ArduPilot validation and its outage relay and comparison tools.
+- Validated in automated tests, a local UDP run with a pymavlink sender, and
+  ArduPilot Rover 4.6.3 SITL over loopback with scripted outages (see
+  [VALIDATION.md](VALIDATION.md) and the [SITL runbook](SITL.md)). No PX4 SITL,
+  companion computer, radio or physical vehicle link has been verified.

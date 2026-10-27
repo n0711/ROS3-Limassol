@@ -35,6 +35,104 @@ samples sent before an outage that arrive late now count. The extra short
 outages "detected" under `reject` are partly gaps created by rejecting fresh
 samples. This is a synthetic link model, not a network or field measurement.
 
+## MAVLink bridge against ArduPilot Rover SITL (27 October 2026)
+
+This is the first run of the receive-only MAVLink bridge against an autopilot
+stack (issue #28). It followed the [SITL runbook](SITL.md) and used
+`tools/udp_outage_relay.py` and `tools/compare_outages.py`.
+
+**Setup.** ArduPilot `Rover-4.6.3` (commit
+`3fc7011a7d3dc047cbb17d8bd98ee94577d144c6`), built with
+`./waf configure --board sitl && ./waf rover`. It was started at the default
+CMAC home (−35.363261, 149.165230) with the command the runbook gave at the
+time, `sim_vehicle.py -v Rover --out udp:127.0.0.1:14550 --no-rebuild`. The
+moving run added `--out udp:127.0.0.1:14560` for the driver. See the runbook
+corrections below. MAVProxy 1.8.75 (pymavlink 2.4.50) ran at its
+default 4 Hz stream rate, with `--mavproxy-args="--non-interactive"` because
+the run was headless. The host was Ubuntu 24.04.5 with Python 3.13.17, and
+everything ran on loopback. The bridge used its defaults: system ID 1,
+`--stale-after 1.0`, `--tick 0.5`, `--battery-max-age 5.0`. The relay scheduled
+outages at 30–35 s and 70–72 s after its first datagram, ran for 120 s, and
+the bridge for 180 s.
+
+There were two runs:
+- **Stationary.**
+- **Moving.** The rover was driven in `MANUAL` by RC overrides from a separate
+  pymavlink script on a second MAVProxy output, with `ARMING_CHECK 0` in SITL.
+  That script is outside this repository and outside the measured path; the
+  relay and bridge sent nothing to the vehicle. Speed ranged 0–8.8 m/s and
+  heading 0.6–358.9°.
+
+| Run | Window (s) | Dropped | Arrival gap (s) | STALE after scheduled drop (s) | STALE − (last forwarded + 1.0 s) | STALE after last accepted sample (s) | HEALTHY after resume (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Stationary | 30–35 | 487 | 5.171 | 1.103 | 0.248 | 1.257 | 0.324 |
+| Stationary | 70–72 | 194 | 2.174 | 1.104 | 0.197 | 1.206 | 0.083 |
+| Moving | 30–35 | 487 | 5.164 | 1.093 | 0.229 | 1.239 | 0.324 |
+| Moving | 70–72 | 195 | 2.161 | 1.093 | 0.221 | 1.232 | 0.085 |
+
+**In both runs:**
+- Each run had two STALE→HEALTHY recoveries, each matched to its window, with
+  no unexplained STALE. A further STALE came after the relay stopped, as
+  expected.
+- No sample fell inside a window.
+- Replay reproduced the live transitions: the same state sequence, with a
+  maximum time difference of 0.24 ms (stationary) and 1.1 ms (moving).
+- Clock alignment spread was 0.9 ms and 2.5 ms.
+- Each run accepted 406 samples and rejected 0.
+- The bridge received exactly the datagrams the relay forwarded: 10,057 and
+  10,078.
+- `crc_errors`, `bad_length`, `signed_skipped`, `heading_unknown`,
+  `out_of_schema` and `other_source` were all 0. About 9,250 other MAVLink
+  messages per run were counted as unsupported.
+
+**Withheld samples, one per run each:**
+- `battery_unknown`: the first `GLOBAL_POSITION_INT` arrived before the first
+  `SYS_STATUS`. SITL reported a battery value from the first sample on, so −1
+  was never seen.
+- `battery_stale`: after the 5 s outage, the first position arrived before a
+  new `SYS_STATUS`, and the last battery report was more than 5 s old. That is
+  why `HEALTHY` returned 0.32 s after traffic resumed for the 5 s window, but
+  0.08 s for the 2 s window.
+
+**Position sanity check.** In each run the first six samples were (0, 0). They
+were sent before the EKF origin existed and were accepted as valid schema-v1
+telemetry, as [MAVLINK.md](MAVLINK.md) warns. After that, stationary positions
+were 0.89–0.91 m from the SITL home and moving positions 0.2–8.3 m. Battery was
+100 % when stationary and 100 → 77 % while moving. This is a sanity check of
+the mapping, not a positioning claim.
+
+**Finding: the default 1 Hz position stream sits on the default threshold.**
+For the first 11 s of position data, before MAVProxy's stream request took
+effect, `GLOBAL_POSITION_INT` arrived at 1 Hz, Rover's default `SRx_POSITION`.
+Each run had 11 such gaps between 0.990 and 1.009 s, and 5–6 of them were above
+the 1.0 s `--stale-after`. No false STALE occurred, but only because no 0.5 s
+tick landed in the few milliseconds when the age exceeded 1.0 s. With a
+sustained 1 Hz stream this would produce intermittent false STALE changes.
+[MAVLINK.md](MAVLINK.md#choosing---stale-after) now says how to choose
+`--stale-after`.
+
+**Runbook corrections, now in [SITL.md](SITL.md):**
+- `sim_vehicle.py` already passes `--out 127.0.0.1:14550`, so the runbook's
+  extra `--out` sent every message twice. The relay forwarded only the first
+  source and counted the copy (`other_sources` 10,738 and 10,760, equal to
+  forwarded plus dropped), so the measurement was unaffected.
+- "STALE − expected" uses the last forwarded datagram of any type. Here the
+  last datagram came 8–11 ms after the last position, so the values fell
+  between 0 and one tick. In general they can be negative by up to one
+  position interval.
+
+**Not established:**
+- PX4 SITL, or any router or ground station other than MAVProxy.
+- A companion computer, a radio or any physical link.
+- Real network delay, jitter or loss: these outages were clean drops on
+  loopback.
+- MAVLink 2 signing, or more than one vehicle.
+- Long runs: each run lasted about 3 minutes.
+- Behaviour under a sustained 1 Hz stream.
+
+Vehicle dynamics are SITL's model. This is simulation evidence, not field
+validation, and says nothing about vehicle safety.
+
 ## Seeded link-impairment experiments (27 October 2026)
 
 `impairment.py` adds a virtual-time, seeded link model (delay, jitter,

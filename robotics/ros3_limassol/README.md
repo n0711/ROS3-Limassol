@@ -339,5 +339,7 @@ The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
 0.1.0. Offline recording/replay were added in 0.2.0; live ROS recording in 0.3.0.
 Version 0.3.1 adds Humble compatibility and dual-distribution ROS CI.
 An experimental receive-only MAVLink UDP adapter is tested with
-independently encoded frames only. No physical marine dynamics, autopilot
-SITL or physical MAVLink link, or field deployment has been verified. See the [roadmap](docs/ROADMAP.md).
+independently encoded frames and against ArduPilot Rover SITL over loopback
+(see [validation](docs/VALIDATION.md)). No physical marine dynamics, PX4 SITL,
+physical MAVLink link, or field deployment has been verified. See the
+[roadmap](docs/ROADMAP.md).
