@@ -137,6 +137,21 @@ ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
 
 Stop with Ctrl+C. The output path is relative to that terminal's working directory; an absolute path is safer when replaying elsewhere.
 
+## Optional SimReady/Isaac Sim experiment provenance (experimental)
+
+ROS3 now has a **read-only SimReady experiment manifest validator** that can
+associate one version-pinned OpenUSD asset with an existing receiver recording.
+It does not download assets, run Isaac Sim, bridge telemetry, align camera
+timestamps, run VERA-MOT or verify VLM output. Even a matching local asset
+checksum is not proof the asset was loaded into a simulator.
+
+See the [SimReady study protocol](robotics/ros3_limassol/docs/SIMREADY.md)
+and run from the package directory:
+
+```bash
+python -m ros3_limassol.simready_evidence simready-manifest.json run.jsonl --asset-file /path/to/asset.usd
+```
+
 ## Testing and validation
 
 From `robotics/ros3_limassol`:
