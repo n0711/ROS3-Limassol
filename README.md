@@ -134,6 +134,7 @@ real-world visual accuracy is **not validated**. See the
 - Duplicate, out-of-order, and retired-session rejection.
 - Arrival-based `WAITING`, `HEALTHY`, and `STALE` states.
 - Deterministic simulated communication blackout and recovery.
+- Seeded multi-robot link-impairment experiments scored against declared outages.
 - Streaming JSONL recording and replay.
 - Optional ROS 2 Humble/Jazzy simulator publisher and link observer, plus a separate receive-only recorder.
 - Experimental receive-only MAVLink v1/v2 UDP adapter (standard library only).

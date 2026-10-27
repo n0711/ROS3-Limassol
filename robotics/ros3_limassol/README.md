@@ -63,6 +63,20 @@ telemetry schema v1, so the recording replays and exports evidence like any
 other. The bridge never sends MAVLink; the sender must already stream to it.
 See the [MAVLink mapping and limits](docs/MAVLINK.md).
 
+## Link-impairment experiments
+
+Score the monitor against declared outages under seeded delay, jitter,
+independent and bursty loss, duplication and publisher restarts, for several
+robots at once, **without ROS**:
+
+```sh
+python -m ros3_limassol.impairment docs/impairment-example.json --record-dir runs/example
+```
+
+The report gives detection and recovery latency per outage, missed outages and
+STALE episodes no outage explains; recordings replay with the standard tools.
+See the [impairment guide](docs/IMPAIRMENT.md), including a threshold sweep.
+
 ## Optional read-only offline analytics
 
 ```sh
