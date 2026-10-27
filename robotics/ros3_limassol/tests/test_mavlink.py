@@ -218,6 +218,12 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(lines[0]["state"], "WAITING")
         self.assertEqual(lines[-1]["event"], "summary")
         self.assertEqual(lines[-1]["mavlink"]["frames"], 0)
+        self.assertEqual(lines[-1]["stale_after_s"], 3.0)   # default, reported for replay
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mavlink_bridge.main(["--listen", "127.0.0.1:0", "--duration", "0.1",
+                                 "--tick", "0.05", "--stale-after", "1.5"])
+        self.assertEqual(json.loads(out.getvalue().splitlines()[-1])["stale_after_s"], 1.5)
         for bad in (["--listen", "nohost"], ["--system-id", "300"], ["--tick", "0"],
                     ["--duration", "-1"]):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):

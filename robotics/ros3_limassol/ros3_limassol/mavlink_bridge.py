@@ -24,6 +24,9 @@ from .monitor import LinkMonitor
 from .telemetry import finite_number
 
 MAX_DATAGRAM = 65535
+# Several position intervals at ArduPilot's default 1 Hz SRx_POSITION rate, so
+# a slow default stream does not hover on the threshold (docs/MAVLINK.md).
+DEFAULT_STALE_AFTER_S = 3.0
 
 
 class BridgeSession:
@@ -79,6 +82,7 @@ class BridgeSession:
         now = self._elapsed()
         return {"time_s": now, "event": "summary",
                 **asdict(self.monitor.snapshot(now)),
+                "stale_after_s": self.monitor.stale_after_s,
                 "datagrams": self.datagrams,
                 "session_id": self.mapper.session_id,
                 "mavlink": dict(self.parser.stats),
@@ -130,7 +134,10 @@ def main(args=None):
     parser.add_argument("--system-id", type=int, default=1, help="MAVLink source system ID")
     parser.add_argument("--component-id", type=int, help="optional MAVLink source component ID")
     parser.add_argument("--record", metavar="PATH", help="create an observation JSONL file; never overwrite")
-    parser.add_argument("--stale-after", type=float, default=1.0)
+    parser.add_argument("--stale-after", type=float, default=DEFAULT_STALE_AFTER_S,
+                        help=f"seconds without an accepted sample before STALE "
+                             f"(default {DEFAULT_STALE_AFTER_S:g}; pass the same value to "
+                             f"replay and evidence)")
     parser.add_argument("--tick", type=float, default=0.5, help="observation interval in seconds")
     parser.add_argument("--battery-max-age", type=float, default=5.0)
     parser.add_argument("--duration", type=float, help="stop after this many seconds")

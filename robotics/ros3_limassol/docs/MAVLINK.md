@@ -8,9 +8,13 @@ the Python standard library; pymavlink is **not** required.
 ```sh
 # From robotics/ros3_limassol
 python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jsonl
-python -m ros3_limassol.replay run.jsonl
-python -m ros3_limassol.evidence run.jsonl --robot-id usv01 > evidence.json
+python -m ros3_limassol.replay run.jsonl --stale-after 3
+python -m ros3_limassol.evidence run.jsonl --robot-id usv01 --stale-after 3 > evidence.json
 ```
+
+The bridge's default `--stale-after` is 3.0 s; replay and evidence default to
+1.0 s, so pass the bridge's value to them, as above. See
+[Choosing `--stale-after`](#choosing---stale-after).
 
 The bridge prints one JSON line per link-state change and a summary on exit
 (Ctrl+C or `--duration`). The summary includes MAVLink framing counters and
@@ -32,19 +36,27 @@ GCS or router that requests streams and forwards a copy to the bridge.
 
 ## Choosing `--stale-after`
 
-Only `GLOBAL_POSITION_INT` produces samples, so `--stale-after` (default 1.0 s)
-must clearly exceed the slowest interval at which the vehicle sends that
-message, plus jitter. Detection then takes about `--stale-after` plus up to one
-`--tick` (0.5 s by default).
+Only `GLOBAL_POSITION_INT` produces samples, so `--stale-after` must clearly
+exceed the slowest interval at which the vehicle sends that message, plus
+jitter. Detection then takes about `--stale-after` plus up to one `--tick`
+(0.5 s by default).
 
-ArduPilot Rover's default `SRx_POSITION` stream rate is **1 Hz**. In the
-[SITL validation](VALIDATION.md), position arrived at 1 Hz for the first 11 s of
-position data, until MAVProxy's 4 Hz request took effect. Gaps of 0.990–1.009 s
-straddled the 1.0 s default. No false `STALE` occurred, but only because no tick
-landed in the few milliseconds when the age exceeded 1.0 s. Either have the
-ground station or router request a higher rate (for example `SRx_POSITION` 4, or
-MAVProxy `--streamrate`), or set `--stale-after` to several position intervals,
-such as 3 s for a 1 Hz stream.
+**The default is 3.0 s.** ArduPilot Rover's default `SRx_POSITION` stream rate
+is **1 Hz**. In the [SITL validation](VALIDATION.md), position arrived at 1 Hz
+for the first 11 s of position data, until MAVProxy's 4 Hz request took effect.
+Gaps of 0.990–1.009 s straddled the bridge's former 1.0 s default. No false
+`STALE` occurred, but only because no tick landed in the few milliseconds when
+the age exceeded 1.0 s. A default of three position intervals at 1 Hz avoids
+that. The price is that an outage is reported about 3–3.5 s after the last
+sample, and a gap shorter than 3 s is not reported at all.
+
+For faster detection, have the ground station or router request a higher rate,
+for example `SRx_POSITION` 4 or MAVProxy `--streamrate 4`. Then pass a smaller
+`--stale-after` that is still several intervals long, such as 1.0 s at 4 Hz.
+
+The recording does not store the threshold. Pass the same `--stale-after` to
+`replay` and `evidence`; their default is 1.0 s. The bridge summary reports
+`stale_after_s`.
 
 ## Message mapping
 

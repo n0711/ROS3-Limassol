@@ -127,8 +127,10 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jso
   other.
 - **Receive-only:** it **never sends MAVLink**: no heartbeats, stream requests
   or commands. A ground station or router must already stream to it.
-- **Timeout:** choose `--stale-after` for your vehicle's position rate, and pass
-  the same value to replay and evidence.
+- **Timeout:** the bridge's `--stale-after` defaults to 3 s, three intervals of
+  ArduPilot's default 1 Hz position stream. Choose it for your vehicle's
+  position rate, and pass the same value to replay and evidence, whose default
+  is 1 s.
 
 The [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md) explains the
 mapping, the timeout and the limits. The
