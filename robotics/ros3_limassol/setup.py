@@ -30,6 +30,7 @@ setup(
             "limassol_analyse = ros3_limassol.analysis:main",
             "limassol_multimodal = ros3_limassol.multimodal:main",
             "limassol_llm = ros3_limassol.llm_diagnostics:main",
+            "limassol_mavlink = ros3_limassol.mavlink_bridge:main",
             "sim_usv = ros3_limassol.ros_nodes:sim_main",
             "link_monitor = ros3_limassol.ros_nodes:monitor_main",
             "telemetry_recorder = ros3_limassol.ros_nodes:recorder_main",

@@ -59,7 +59,10 @@ multimodal fusion.
    Synthetic, seeded version added ([IMPAIRMENT.md](IMPAIRMENT.md)). Open
    question it raised: whether late in-session samples should refresh
    liveness instead of counting as rejected under jitter.
-3. Add a receive-only MAVLink adapter with explicit message-to-schema mappings.
+3. ~~Add a receive-only MAVLink adapter with explicit message-to-schema mappings.~~
+   Initial UDP adapter added ([MAVLINK.md](MAVLINK.md)). Next: record an
+   ArduPilot or PX4 SITL session through it, then consider `GPS_RAW_INT` fix
+   quality and MAVLink 2 signature verification.
 4. Evaluate a companion computer and a physical marine-robotics telemetry link.
 
 Vehicle commands and autonomy are outside the current prototype. Arrival liveness
