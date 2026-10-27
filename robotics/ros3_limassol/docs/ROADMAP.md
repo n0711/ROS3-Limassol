@@ -63,6 +63,10 @@ tracked in [GitHub issue #36](https://github.com/n0711/ROS3-Limassol/issues/36).
    question it raised, whether late in-session samples should refresh
    liveness, is answered by an opt-in `late_samples = liveness` policy
    ([TELEMETRY.md](TELEMETRY.md#late-samples)); `reject` stays the default.
+   The model was then checked against live ArduPilot SITL traffic
+   ([results](IMPAIRMENT.md#results-20-live-runs-27-october-2026)). It predicts
+   the receive path well, but assumes a periodic source. Next: model the source's
+   rate offset and interval jitter.
 3. ~~Add a receive-only MAVLink adapter with explicit message-to-schema mappings.~~
    Initial UDP adapter added ([MAVLINK.md](MAVLINK.md)) and run against
    ArduPilot Rover 4.6.3 SITL with scripted outages ([VALIDATION.md](VALIDATION.md)).

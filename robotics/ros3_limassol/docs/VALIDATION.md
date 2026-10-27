@@ -1,5 +1,63 @@
 # Validation record
 
+## Impairment model against live ArduPilot SITL traffic (27 October 2026)
+
+This tests whether the seeded impairment model (#29) predicts a live stack
+(issue #33). It ran 20 runs on one host over loopback: four 4 Hz profiles
+(clean; delay 0.1 s + jitter 0.3 s; 30 % independent loss; bursts with mean
+1 s), each with five seeds (1–5) and outages of 3 s, 0.8 s and 3 s in 300 s.
+
+**Stack:**
+- ArduPilot `Rover-4.6.3` (`3fc7011`) SITL, run via
+  `sim_vehicle.py --mavproxy-args="--non-interactive --streamrate 4"`
+- MAVProxy 1.8.75 (pymavlink 2.4.50)
+- `tools/udp_impairment_relay.py` with a 30 s warm-up
+- the bridge with `--stale-after 1.0 --tick 0.1`
+- Ubuntu 24.04.5 and Python 3.13.17
+
+The relay gives the k-th position datagram the model's k-th fate. Every run was
+scored with `tools/compare_impairment.py` at `ee7d359`. Bridge and monitor
+behaviour was the same in every run: the #31 merge during the runs changed only
+the opt-in policy, which was not used.
+
+**Results:** the full table is in
+[IMPAIRMENT.md](IMPAIRMENT.md#results-20-live-runs-27-october-2026).
+- **Receive path:** given the live source's send times, the model reproduces
+  every recovery latency to within 3.5 ms, every false alarm (39/39 under loss,
+  59/59 under bursts), and every detected or missed 0.8 s outage. Detection
+  latencies agree to within one 0.1 s bridge tick.
+- **Source timing:** against the nominal, perfectly periodic model, the
+  differences come from source timing. ArduPilot's stream ran at
+  3.995–3.9996 Hz and drifted up to 0.43 s.
+  - Recovery is misstated in both directions: 0.00 vs 0.15 s on a clean link,
+    and 0.25 vs 0.11 s under bursts.
+  - Loss false alarms are underestimated: 79 vs 94 per hour.
+  - Under bursts, 0.8 s outages count as detected 5/5 instead of 3/5.
+- **Reordering:** the bridge rejected nothing, because it numbers samples in
+  arrival order. The `reject` policy would have rejected 83 reordered samples
+  in the jitter runs.
+- **Run quality:**
+  - All runs started HEALTHY and their recordings covered the scenario.
+  - Fate agreement was 23,975/23,999.
+  - CRC and length errors were 0.
+  - Withheld samples: one `battery_unknown` per run at start-up, and two
+    `battery_stale`, each matching a single burst longer than 5 s.
+
+**Not established:**
+- more than one vehicle
+- radio, real network or other routers
+- other stream rates or timeouts
+- signed MAVLink, or PX4
+
+For reproducibility, archive the full per-run scenario, relay log, bridge
+recording, JSON comparison report and exact tool versions. This pull request
+contains the scenario profiles and aggregate results, not the 20 sets of raw
+logs. The comparison script now verifies that the logged relay parameters
+match the supplied scenario and that sample indices are continuous.
+
+Five seeds per profile leave false-alarm rates with sampling uncertainty.
+This is simulation evidence, not field validation.
+
 ## Opt-in late-sample liveness (27 October 2026)
 
 `LinkMonitor(late_samples="liveness")` accepts a delayed, unseen sample of the
