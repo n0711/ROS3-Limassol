@@ -50,6 +50,19 @@ the exact input bytes; it does not authenticate the recording or establish its
 provenance. A failed read emits no JSON report. See the
 [evidence specification](docs/EVIDENCE.md) for interpretation and limitations.
 
+## Receive-only MAVLink input (experimental)
+
+Observe a MAVLink sender over UDP **without ROS or pymavlink**:
+
+```sh
+python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jsonl
+```
+
+`GLOBAL_POSITION_INT` and `SYS_STATUS` from one system ID are mapped explicitly to
+telemetry schema v1, so the recording replays and exports evidence like any
+other. The bridge never sends MAVLink; the sender must already stream to it.
+See the [MAVLink mapping and limits](docs/MAVLINK.md).
+
 ## Optional read-only offline analytics
 
 ```sh
@@ -307,5 +320,6 @@ or network performance. Consult actual job results and the
 The [paper](../../docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) describes version
 0.1.0. Offline recording/replay were added in 0.2.0; live ROS recording in 0.3.0.
 Version 0.3.1 adds Humble compatibility and dual-distribution ROS CI.
-No physical marine dynamics,
-MAVLink adapter or field deployment has been verified. See the [roadmap](docs/ROADMAP.md).
+An experimental receive-only MAVLink UDP adapter is tested with
+independently encoded frames only. No physical marine dynamics, autopilot
+SITL or physical MAVLink link, or field deployment has been verified. See the [roadmap](docs/ROADMAP.md).
