@@ -147,10 +147,22 @@ python tools/compare_impairment.py docs/impairment-live-burst.json relay.jsonl l
 
 `compare_impairment.py` aligns the bridge recording to the relay's t = 0,
 replays it, and scores it with `match_outages`, the rule the virtual report
-uses. Next to it, it runs the virtual model on the same scenario. Its **fate
-agreement** line counts samples whose outcome (outage, burst, loss, forwarded)
-matches the virtual model's. They can differ only where live timing moves a
-sample across an outage boundary.
+uses. It sets three results side by side:
+
+- **Live:** the bridge recording.
+- **Model, live timing:** the monitor fed with the live source's actual send
+  times, plus the delays the relay applied, numbered in arrival order as the
+  bridge numbers them. It differs from live only in the receive path:
+  transport, bridge, battery gating and tick phase.
+- **Model, nominal:** the virtual run, which assumes a perfectly periodic
+  source. It differs from the live-timing model only in source timing: rate
+  drift, phase and jitter.
+
+The report also gives the live source's effective rate and its largest drift
+from the model's sample times k / `rate_hz`. Its **fate agreement** line counts
+samples whose outcome (outage, burst, loss, forwarded) matches the nominal
+model's. They differ only where live timing moves a sample across an outage
+boundary.
 
 **Two structural differences to keep in mind:**
 - **The bridge numbers samples in arrival order**, so on this path reordering

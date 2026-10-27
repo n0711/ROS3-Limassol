@@ -43,7 +43,9 @@ except ImportError:  # running from a checkout without installation
     sys.path.insert(0, str(TOOLS.parent))
     from ros3_limassol.impairment import (link_fates, match_outages, parse_scenario,
                                           run_robot)
+from ros3_limassol.recording import Observation
 from ros3_limassol.replay import run_replay
+from ros3_limassol.simulator import UsvSimulator
 
 sys.path.insert(0, str(TOOLS))
 from compare_outages import align_recording  # noqa: E402
@@ -110,6 +112,40 @@ def virtual_outcomes(model, scenario, count):
     return outcomes
 
 
+def timed_virtual(model, scenario, samples):
+    """Score the model's monitor driven by the live source's actual send times.
+
+    Each sample the relay forwarded arrives at its relay time plus the delays
+    the relay applied. Arrivals are numbered in arrival order, as the bridge
+    numbers them, and ticks fall on multiples of ``tick_s`` from t = 0, as in
+    the virtual run. So this differs from the nominal virtual run only in
+    source timing (rate drift, phase, jitter), and from live only in the
+    receive path (transport, bridge, battery gating, tick phase).
+    """
+    arrivals = sorted(s["rel_s"] + delay for s in samples if s["outcome"] == "forwarded"
+                      for delay in s["delays_s"])
+    sim = UsvSimulator(model.robot_id, blackout_duration_s=0.0,
+                       session_id=f"{model.robot_id}_timed")
+    merged = [(round(i * scenario.tick_s, 9), 1, None)
+              for i in range(int(scenario.duration_s / scenario.tick_s) + 1)]
+    merged += [(round(t, 9), 0, sim.sample(t, int(round(t * 1e9))).to_json())
+               for t in arrivals if t <= scenario.duration_s]
+    merged.sort(key=lambda item: item[:2])
+    text = "".join(Observation(t, payload).to_json() + "\n" for t, _, payload in merged)
+    events = list(run_replay(io.StringIO(text), model.robot_id, scenario.stale_after_s))
+    return match_outages(model, scenario, events)
+
+
+def source_timing(samples, rate_hz):
+    """Effective live position rate and drift from the model's k / rate_hz."""
+    times = [s["rel_s"] for s in samples]
+    if len(times) < 2:
+        return None
+    period = 1.0 / rate_hz
+    return {"rate_hz": round((len(times) - 1) / (times[-1] - times[0]), 5),
+            "max_abs_drift_s": round(max(abs(t - k * period) for k, t in enumerate(times)), 4)}
+
+
 def _side(matched, unexplained, duration_s):
     detected = [m for m in matched if m["detected"]]
     latencies = [m["detection_latency_s"] for m in detected
@@ -148,6 +184,7 @@ def compare(scenario, relay_lines, recording_text, robot_id=None):
     expected = virtual_outcomes(model, scenario, len(live_outcomes))
     differ = [k for k, (a, b) in enumerate(zip(live_outcomes, expected)) if a != b]
     gaps = [b["rel_s"] - a["rel_s"] for a, b in zip(relay["samples"], relay["samples"][1:])]
+    timed_matched, timed_unexplained = timed_virtual(model, scenario, relay["samples"])
     return {
         "robot_id": model.robot_id, "seed": scenario.seed,
         "duration_s": scenario.duration_s, "stale_after_s": scenario.stale_after_s,
@@ -156,9 +193,11 @@ def compare(scenario, relay_lines, recording_text, robot_id=None):
         "position_interval_s": {
             "median": round(statistics.median(gaps), 4),
             "max": round(max(gaps), 4)} if gaps else None,
+        "source_timing": source_timing(relay["samples"], model.rate_hz),
         "fate_agreement": {"samples": len(live_outcomes), "differ": len(differ),
                            "differing_samples": differ[:20]},
         "live": _side(live_matched, live_unexplained, scenario.duration_s),
+        "virtual_timed": _side(timed_matched, timed_unexplained, scenario.duration_s),
         "virtual": _side(truth["outages"], truth["unexplained_stale_episodes"],
                          scenario.duration_s),
         "virtual_policy": scenario.late_samples,
@@ -172,7 +211,8 @@ def compare(scenario, relay_lines, recording_text, robot_id=None):
 
 
 def markdown(report):
-    live, virtual, liveness = report["live"], report["virtual"], report["virtual_liveness"]
+    live, timed, nominal = report["live"], report["virtual_timed"], report["virtual_liveness"]
+    source = report["source_timing"] or {}
     lines = [
         f"Robot {report['robot_id']}, seed {report['seed']}, {report['duration_s']:g} s, "
         f"stale_after {report['stale_after_s']:g} s, tick {report['tick_s']:g} s; "
@@ -181,27 +221,32 @@ def markdown(report):
         f"/{report['fate_agreement']['samples']} samples; alignment spread "
         f"{report['alignment']['spread_ms']} ms; recording covers the scenario: "
         f"{report['alignment']['covers_scenario']}",
-        f"Virtual columns use late_samples={report['virtual_policy']!r}; "
-        f"virtual 'liveness' (the bridge path's analogue) is in brackets.",
+        f"Live source: {source.get('rate_hz')} Hz, at most {source.get('max_abs_drift_s')} s "
+        f"from the model's sample times",
         "",
-        "| Outage (s) | Live detection (s) | Virtual detection (s) | Live recovery (s) | Virtual recovery (s) |",
-        "| --- | --- | --- | --- | --- |",
+        "Cells are detection / recovery latency (s). 'Live timing' drives the model with the",
+        "live source's send times; 'nominal' assumes a perfectly periodic source. Both use",
+        "late_samples='liveness', the bridge path's analogue.",
+        "",
+        "| Outage (s) | Live | Model, live timing | Model, nominal |",
+        "| --- | --- | --- | --- |",
     ]
 
-    def cell(m, key):
+    def cell(m):
         if not m["detected"]:
             return "missed"
-        if m[key] is None:
-            return "already STALE" if m["already_stale"] else "—"
-        return f"{m[key]:.3f}"
+        det = ("already STALE" if m["already_stale"] else "—") \
+            if m["detection_latency_s"] is None else f"{m['detection_latency_s']:.3f}"
+        rec = "—" if m["recovery_latency_s"] is None else f"{m['recovery_latency_s']:.3f}"
+        return f"{det} / {rec}"
 
-    for a, b, c in zip(live["outages"], virtual["outages"], liveness["outages"]):
-        lines.append(f"| {a['outage_start_s']:g}–{a['outage_end_s']:g} | "
-                     f"{cell(a, 'detection_latency_s')} | {cell(b, 'detection_latency_s')} "
-                     f"[{cell(c, 'detection_latency_s')}] | {cell(a, 'recovery_latency_s')} | "
-                     f"{cell(b, 'recovery_latency_s')} [{cell(c, 'recovery_latency_s')}] |")
-    lines += ["", f"Unexplained STALE: live {live['unexplained_stale']}, "
-                  f"virtual {virtual['unexplained_stale']} [{liveness['unexplained_stale']}]"]
+    for a, b, c in zip(live["outages"], timed["outages"], nominal["outages"]):
+        lines.append(f"| {a['outage_start_s']:g}–{a['outage_end_s']:g} | {cell(a)} | "
+                     f"{cell(b)} | {cell(c)} |")
+    lines += ["", f"Unexplained STALE: live {live['unexplained_stale']}, model with live timing "
+                  f"{timed['unexplained_stale']}, model nominal {nominal['unexplained_stale']} "
+                  f"(nominal under late_samples={report['virtual_policy']!r}: "
+                  f"{report['virtual']['unexplained_stale']})"]
     return "\n".join(lines)
 
 

@@ -246,10 +246,35 @@ class CompareTests(unittest.TestCase):
                 else:
                     self.assertAlmostEqual(a[key], b[key], places=6)
         self.assertGreater(virtual["unexplained_stale"], 0)   # bursts did cause false alarms
-        # Without jitter nothing is reordered, so both virtual policies agree.
+        # Without jitter nothing is reordered, so both virtual policies agree, and a
+        # perfectly periodic source makes the live-timed model the nominal one.
         self.assertEqual(report["virtual_policy"], "reject")
         self.assertEqual(report["virtual_liveness"], virtual)
+        self.assertEqual(report["virtual_timed"], virtual)
+        self.assertEqual(report["source_timing"]["max_abs_drift_s"], 0.0)
         self.assertIn("Fate agreement", compare_tool.markdown(report))
+
+    def test_live_timed_model_absorbs_source_drift(self):
+        # A source 0.5 % slower than the scenario's 4 Hz drifts ~0.3 s over 60 s, so
+        # samples cross outage boundaries differently from the nominal model. Driven
+        # by the live send times, the model must reproduce the live run exactly.
+        # (Period 0.2513 s keeps every arrival + stale_after >= 0.2 ms from a tick.)
+        sc = parse_scenario({"seed": 5, "duration_s": 60, "tick_s": 0.1, "stale_after_s": 1.0,
+                             "robots": [{"robot_id": "usv01", "rate_hz": 4, "delay_s": 0.03,
+                                         "loss": 0.2, "burst_loss": {"enter": 0.05, "exit": 0.3},
+                                         "outages": [[10, 13], [30, 30.8], [45, 48]]}]})
+        report = self.run_synthetic(sc, period=0.2513)
+        self.assertGreater(report["source_timing"]["max_abs_drift_s"], 0.25)
+        live, timed = report["live"], report["virtual_timed"]
+        for key in ("detected", "missed", "already_stale", "unexplained_stale"):
+            self.assertEqual(live[key], timed[key], key)
+        for a, b in zip(live["outages"], timed["outages"]):
+            for key in ("detection_latency_s", "recovery_latency_s"):
+                if b[key] is None:
+                    self.assertIsNone(a[key])
+                else:
+                    self.assertAlmostEqual(a[key], b[key], places=6)
+        self.assertIn("Model, live timing", compare_tool.markdown(report))
 
     def test_relay_log_without_t0_is_rejected(self):
         with self.assertRaises(ValueError):
