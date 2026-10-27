@@ -230,6 +230,20 @@ nonzero process exit. Existing files are never overwritten. Oversized or
 non-UTF-8 payloads cannot be represented in version 1 and are counted/logged
 separately. See [recording details and limitations](docs/RECORDING.md).
 
+## Optional NVIDIA SimReady provenance experiment
+
+The optional **read-only** manifest tool binds a declared USD dataset
+revision/path/license and a locally checked asset SHA-256 to a separately
+recorded ROS3 receiver trace. It does not run Isaac Sim or claim a camera,
+ROS bridge or real robot was observed.
+
+```bash
+python -m ros3_limassol.simready_evidence simready-manifest.json run.jsonl --asset-file /path/to/asset.usd
+```
+
+Review [SIMREADY.md](docs/SIMREADY.md) for the complete protocol, example
+manifest and explicit validation limits.
+
 ## Tests and packaging
 
 From this package directory:
