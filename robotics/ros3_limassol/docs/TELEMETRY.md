@@ -43,3 +43,28 @@ that the source is alive.
 
 Rejection reasons are `invalid_payload`, `unexpected_robot`,
 `duplicate_or_out_of_order`, `retired_session`, or `session_limit`.
+
+## Late samples
+
+By default (`late_samples = reject`) a sample whose sequence is not above the
+highest already accepted in its session is rejected as
+`duplicate_or_out_of_order`, even if it is new and merely delayed.
+
+With `late_samples = liveness` such a sample is **accepted** when its sequence
+is within the last 256 of the highest and has not been seen before. It then
+refreshes arrival recency, because it did arrive. It counts in `accepted`
+(and in a separate `late_accepted` counter in evidence reports and the MAVLink
+bridge summary), and `last_sequence` stays the highest. Repeats, samples too far
+behind to check for repeats, and samples from retired sessions are still
+rejected. The status payload fields are unchanged.
+
+`HEALTHY` keeps its meaning under either policy: a valid sample has arrived
+recently. Under jitter larger than the sample period, `reject` turns many fresh
+samples into rejections; [VALIDATION.md](VALIDATION.md) has a measured
+synthetic comparison of both policies. Choose
+one policy per experiment, and compare or pool evidence reports only when
+their `late_samples` values match.
+
+Select it with `--late-samples liveness` on `replay`, `evidence` and
+`mavlink_bridge`, or the `late_samples` parameter of the ROS `link_monitor`
+node (`late_samples:=liveness` with `usv_demo.launch.py`).

@@ -5,13 +5,14 @@ import argparse
 from dataclasses import asdict
 import json
 
-from .monitor import LinkMonitor
+from .monitor import LATE_SAMPLE_POLICIES, LinkMonitor
 from .recording import read_observations
 
 
-def run_replay(stream, robot_id="usv01", stale_after_s=1.0):
+def run_replay(stream, robot_id="usv01", stale_after_s=1.0, late_samples="reject"):
     """Yield transitions and a final snapshot on the recorded receiver clock."""
-    monitor = LinkMonitor(robot_id=robot_id, stale_after_s=stale_after_s)
+    monitor = LinkMonitor(robot_id=robot_id, stale_after_s=stale_after_s,
+                          late_samples=late_samples)
     elapsed = 0.0
     status = monitor.snapshot(elapsed)
     previous = status.state
@@ -33,13 +34,16 @@ def main(args=None):
     parser.add_argument("--robot-id", default="usv01")
     parser.add_argument("--stale-after", type=float, default=1.0)
     parser.add_argument("--json", action="store_true", help="emit JSON Lines")
+    parser.add_argument("--late-samples", choices=LATE_SAMPLE_POLICIES, default="reject",
+                        help="late in-session samples: reject (default) or count for liveness")
     options = parser.parse_args(args)
     try:
         # Decode one bounded line at a time. TextIOWrapper may read ahead and
         # report invalid bytes from a later line while reading the first line.
         with open(options.recording, "rb") as raw_stream:
             stream = _Utf8Lines(raw_stream)
-            for event in run_replay(stream, options.robot_id, options.stale_after):
+            for event in run_replay(stream, options.robot_id, options.stale_after,
+                                    options.late_samples):
                 if options.json:
                     print(json.dumps(event, allow_nan=False, separators=(",", ":")))
                 elif event.get("event") == "summary":

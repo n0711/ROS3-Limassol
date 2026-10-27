@@ -62,7 +62,8 @@ class LinkMonitorNode(Node):
         super().__init__("link_monitor", **kwargs)
         robot_id = self.declare_parameter("robot_id", "usv01").value
         stale = self.declare_parameter("stale_after_s", 1.0).value
-        self.monitor = LinkMonitor(robot_id, stale)
+        late = self.declare_parameter("late_samples", "reject").value
+        self.monitor = LinkMonitor(robot_id, stale, late_samples=late)
         self.publisher = self.create_publisher(String, "link_status", status_qos())
         self.subscription = self.create_subscription(
             String, "telemetry", self._receive, telemetry_qos()

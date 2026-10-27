@@ -20,7 +20,7 @@ import time
 
 from .live_recorder import LiveRecorder
 from .mavlink import MavlinkParser, MavlinkTelemetryMapper
-from .monitor import LinkMonitor
+from .monitor import LATE_SAMPLE_POLICIES, LinkMonitor
 from .telemetry import finite_number
 
 MAX_DATAGRAM = 65535
@@ -80,6 +80,8 @@ class BridgeSession:
         return {"time_s": now, "event": "summary",
                 **asdict(self.monitor.snapshot(now)),
                 "datagrams": self.datagrams,
+                "late_samples": self.monitor.late_samples,
+                "late_accepted": self.monitor.late_accepted,
                 "session_id": self.mapper.session_id,
                 "mavlink": dict(self.parser.stats),
                 "mapping": dict(self.mapper.stats)}
@@ -131,6 +133,8 @@ def main(args=None):
     parser.add_argument("--component-id", type=int, help="optional MAVLink source component ID")
     parser.add_argument("--record", metavar="PATH", help="create an observation JSONL file; never overwrite")
     parser.add_argument("--stale-after", type=float, default=1.0)
+    parser.add_argument("--late-samples", choices=LATE_SAMPLE_POLICIES, default="reject",
+                        help="late in-session samples: reject (default) or count for liveness")
     parser.add_argument("--tick", type=float, default=0.5, help="observation interval in seconds")
     parser.add_argument("--battery-max-age", type=float, default=5.0)
     parser.add_argument("--duration", type=float, help="stop after this many seconds")
@@ -142,7 +146,8 @@ def main(args=None):
         mapper = MavlinkTelemetryMapper(
             options.robot_id, options.system_id, options.component_id,
             battery_max_age_s=options.battery_max_age)
-        monitor = LinkMonitor(robot_id=options.robot_id, stale_after_s=options.stale_after)
+        monitor = LinkMonitor(robot_id=options.robot_id, stale_after_s=options.stale_after,
+                              late_samples=options.late_samples)
         family = socket.AF_INET6 if ":" in options.listen[0] else socket.AF_INET
         with ExitStack() as stack:
             sock = stack.enter_context(socket.socket(family, socket.SOCK_DGRAM))

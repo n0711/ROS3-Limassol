@@ -1,5 +1,39 @@
 # Validation record
 
+## Opt-in late-sample liveness (27 October 2026)
+
+`LinkMonitor(late_samples="liveness")` accepts a delayed, unseen sample of the
+current session (within 256 sequences of the highest) and lets it refresh
+arrival recency. The default `reject` policy is unchanged and remains the
+default everywhere. Replay, evidence (`late_samples`, `late_accepted` keys),
+the MAVLink bridge and the ROS `link_monitor` node (`late_samples` parameter,
+also exposed by `usv_demo.launch.py`) accept the option. New tests cover
+default behaviour, single acceptance, duplicate and window rejection,
+session rules, configuration errors and CLI/report plumbing. The ROS
+parameter is exercised only by the Humble/Jazzy CI jobs; it was not run
+locally (no `rclpy`).
+
+A synthetic comparison used the seeded impairment model from PR #29: 20 seeds
+per row, 300 s at 10 Hz, `stale_after_s` 1.0, `tick_s` 0.05, two 3 s outages
+and one 0.8 s outage per run.
+
+| Link | Policy | Rejected as out-of-order | Mean / max detection latency (s) | 0.8 s outages detected | Unexplained STALE / hour |
+| --- | --- | --- | --- | --- | --- |
+| jitter 0.15 s | reject | 5.6% | 1.01 / 1.05 | 0/20 | 0 |
+| jitter 0.15 s | liveness | 0.0% | 1.01 / 1.05 | 0/20 | 0 |
+| delay 0.1 s + jitter 0.3 s | reject | 24.8% | 1.19 / 1.30 | 3/20 | 0 |
+| delay 0.1 s + jitter 0.3 s | liveness | 0.0% | 1.20 / 1.30 | 1/20 | 0 |
+| jitter 0.6 s | reject | 46.2% | 1.25 / 1.50 | 4/20 | 0 |
+| jitter 0.6 s | liveness | 0.0% | 1.31 / 1.50 | 1/20 | 0 |
+| jitter 0.3 s + bursts (mean 1 s) | reject | 24.3% | 1.01 / 1.20 | 8/20 | 242 |
+| jitter 0.3 s + bursts (mean 1 s) | liveness | 0.0% | 1.02 / 1.20 | 6/20 | 238 |
+
+Under `liveness`, out-of-order rejections disappear. Maximum detection latency
+is unchanged, and the mean rises slightly only under heavy jitter, because
+samples sent before an outage that arrive late now count. The extra short
+outages "detected" under `reject` are partly gaps created by rejecting fresh
+samples. This is a synthetic link model, not a network or field measurement.
+
 ## Receiver-only context alongside local VLM (27 October 2026)
 
 The optional camera node now retains **one** recently delivered

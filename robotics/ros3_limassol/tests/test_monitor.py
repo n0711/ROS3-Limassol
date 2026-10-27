@@ -64,3 +64,56 @@ class LinkMonitorTests(unittest.TestCase):
         for value in (0, 4097, True, 1.5):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 LinkMonitor(max_sessions=value)
+
+
+class LateSampleLivenessTests(unittest.TestCase):
+    def late(self, **kwargs):
+        return LinkMonitor(stale_after_s=1.0, late_samples="liveness", **kwargs)
+
+    def test_default_still_rejects_late_samples(self):
+        monitor = LinkMonitor(stale_after_s=1.0)
+        monitor.ingest(packet(sequence=5).to_json(), 0)
+        self.assertFalse(monitor.ingest(packet(sequence=4).to_json(), 0.9))
+        self.assertEqual(monitor.snapshot(1.0).state, "STALE")
+        self.assertEqual((monitor.late_samples, monitor.late_accepted), ("reject", 0))
+
+    def test_unseen_late_sample_refreshes_liveness_once(self):
+        monitor = self.late()
+        monitor.ingest(packet(sequence=5).to_json(), 0)
+        self.assertTrue(monitor.ingest(packet(sequence=4).to_json(), 0.9))
+        status = monitor.snapshot(1.5)
+        self.assertEqual(status.state, "HEALTHY")
+        self.assertEqual((status.accepted, status.rejected, status.last_sequence), (2, 0, 5))
+        self.assertEqual(monitor.late_accepted, 1)
+        for repeat in (4, 5):
+            self.assertFalse(monitor.ingest(packet(sequence=repeat).to_json(), 1.6))
+        self.assertEqual(monitor.last_rejection, "duplicate_or_out_of_order")
+        self.assertEqual(monitor.snapshot(2.0).state, "STALE")
+
+    def test_late_window_bounds_what_can_be_checked(self):
+        monitor = self.late(late_window=10)
+        monitor.ingest(packet(sequence=100).to_json(), 0)
+        self.assertTrue(monitor.ingest(packet(sequence=91).to_json(), 0.1))
+        self.assertFalse(monitor.ingest(packet(sequence=90).to_json(), 0.2))
+        for sequence in range(101, 200):
+            monitor.ingest(packet(sequence=sequence).to_json(), 0.3)
+        self.assertLessEqual(len(monitor._recent), 20)
+        for repeat in (195, 190):
+            self.assertFalse(monitor.ingest(packet(sequence=repeat).to_json(), 0.4))
+
+    def test_sessions_keep_their_rules(self):
+        monitor = self.late()
+        monitor.ingest(packet(sequence=5).to_json(), 0)
+        monitor.ingest(packet(session_id="boot_2", sequence=0).to_json(), 0.1)
+        self.assertFalse(monitor.ingest(packet(sequence=4).to_json(), 0.2))
+        self.assertEqual(monitor.last_rejection, "retired_session")
+        # The new session starts with an empty window: sequence 0 was seen.
+        self.assertFalse(monitor.ingest(packet(session_id="boot_2", sequence=0).to_json(), 0.3))
+        self.assertTrue(monitor.ingest(packet(session_id="boot_2", sequence=3).to_json(), 0.4))
+        self.assertTrue(monitor.ingest(packet(session_id="boot_2", sequence=2).to_json(), 0.5))
+
+    def test_rejects_invalid_configuration(self):
+        for kwargs in ({"late_samples": "accept"}, {"late_window": 0},
+                       {"late_window": 65537}, {"late_window": 2.0}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                LinkMonitor(**kwargs)

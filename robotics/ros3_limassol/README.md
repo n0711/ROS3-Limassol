@@ -197,6 +197,10 @@ Launch overrides:
 ros2 launch ros3_limassol usv_demo.launch.py robot_id:=usv02 stale_after_s:=1.5 blackout_start_s:=4.0 blackout_duration_s:=3.0
 ```
 
+Add `late_samples:=liveness` to let delayed but new in-session samples refresh
+liveness instead of being rejected; the default is `reject`. See
+[late samples](docs/TELEMETRY.md#late-samples).
+
 Each robot uses `/limassol/<robot_id>/`. Startup parameters are read once; restart
 the nodes to change them. Steady-clock timers and receiver monotonic time drive
 liveness. No hard scheduling bound is established.
