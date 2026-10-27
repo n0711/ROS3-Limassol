@@ -50,7 +50,7 @@ class VLMObserverNode(Node):
             raise ValueError("min_interval_s must be in [1,3600]")
         if not 1 <= self.max_result_age_s <= 3600:
             raise ValueError("max_result_age_s must be in [1,3600]")
-        self._context = ReceiverObservationContext(
+        self._observation_context = ReceiverObservationContext(
             robot_id=self.robot_id,
             max_status_age_s=self.declare_parameter(
                 "max_status_age_s", 1.0,
@@ -77,7 +77,7 @@ class VLMObserverNode(Node):
 
     def _receive_status(self, message):
         try:
-            self._context.receive_status(message.data)
+            self._observation_context.receive_status(message.data)
         except ValueError:
             self.get_logger().warning(
                 "Invalid link status ignored by read-only camera observer"
@@ -98,7 +98,7 @@ class VLMObserverNode(Node):
             return
         # Snapshot *before* inference, so later status updates cannot rewrite
         # the frame's receiver-side context.
-        self._pending_context = self._context.sample_frame(now_s=now)
+        self._pending_context = self._observation_context.sample_frame(now_s=now)
         self._started_at = now
         self._next_allowed = now + self.min_interval_s
         self._future = self._worker.submit(
