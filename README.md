@@ -105,8 +105,11 @@ single-file image inspection:
 python -m ros3_limassol.vlm_diagnostics --image frame.jpg --model gemma3:4b
 ```
 
-The optional ROS launch is `vlm_observer.launch.py`. It never sends vehicle
-commands or connects its descriptions to navigation. Tests use a fake model;
+The optional ROS launch is `vlm_observer.launch.py`. It can attach the
+latest recently delivered `link_status` snapshot to each sampled image
+description, with receiver-side callback timing and explicit unverified
+synchronization flags. Missing/old status is reported as unavailable.
+It never sends vehicle commands or connects its descriptions to navigation. Tests use a fake model;
 real-world visual accuracy is **not validated**. See the
 [VLM setup and boundaries](robotics/ros3_limassol/docs/VLM.md).
 

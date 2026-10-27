@@ -62,7 +62,7 @@ ros2 topic echo /limassol/usv01/vlm_diagnostics std_msgs/msg/String
 
 The launch accepts `robot_id:=usv02` to select another namespace and
 `min_interval_s:=10.0`, `timeout_s:=20.0`, and
-`max_result_age_s:=30.0`. The observer is disabled until deliberately
+`max_result_age_s:=30.0`, and `max_status_age_s:=1.0`. The observer is disabled until deliberately
 launched. It subscribes best-effort with depth 1, performs inference in one
 worker thread, and drops frames while busy or within the minimum interval.
 Expired results are not published as current. There is no frame queue,
@@ -97,11 +97,28 @@ validation is established.
 - `multimodal.py`: bundles *independent* telemetry, VERA-MOT, and declared
   VLM evidence, without synchronized fusion or vehicle control.
 
-The VLM observer is not automatically correlated with the telemetry monitor,
-nor can it establish that VERA-MOT tracks represent the same subjects in the
-same time interval. A future synchronized fusion interface will require
-camera calibration, independent clock-ground-truth data, provenance and
-held-out evaluations, not just shared robot IDs.
+The VLM observer additionally subscribes to the matching
+`/limassol/<robot_id>/link_status` topic (reliable, depth 1). On each
+**accepted sampled frame callback**, it snapshots the most recently
+delivered validated link status **only if it arrived at this process within
+`max_status_age_s`**. If not available or too old, the associated status
+is explicitly `null`. The status snapshot is frozen before model inference:
+a later link recovery does not rewrite the context of an earlier frame.
+
+The JSON `observation_context` contains `observer_session_id` and
+`sample_index` for local sample identity, `frame_callback_offset_s`
+relative to this observer's own first callback, and
+`status_delivery_age_at_frame_s` measured from the **same process's
+monotonic callback clock**. It includes the bounded
+`status_at_frame_callback` state/counters when a recently delivered
+status exists. It marks camera-capture time, sender clock alignment,
+physical robot identity and VERA-MOT track alignment **unverified**.
+This is receiver-side temporal co-observation, **not sensor-level
+synchronization, causality or VLM ground truth**.
+
+A future synchronized fusion interface still requires camera calibration,
+independent clock-ground-truth data, provenance and held-out evaluations.
+A matching ROS namespace is not proof of shared physical robot identity.
 
 ## 5. Verification
 
@@ -114,7 +131,8 @@ python -m unittest discover -s tests -v
 The standard-library tests mock Ollama and validate request construction,
 image bounds, strict response parsing, and rejection behavior. Humble and
 Jazzy CI build `sensor_msgs`, verify the launch and exercise a real DDS topic
-roundtrip with a **fake** model response. No real model weights or physical
+roundtrip with a **fake** model response, now also checking latest-status
+receipt at the camera callback. No real model weights or physical
 camera are exercised in CI. Run model-specific and field tests before
 claiming visual recognition accuracy or on-board real-time capability.
 

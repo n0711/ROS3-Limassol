@@ -17,6 +17,7 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
 from .llm_diagnostics import MODEL_NAME
+from .observation_context import ReceiverObservationContext
 from .ros_nodes import status_qos, telemetry_qos
 from .telemetry import finite_number, validate_robot_id
 from .vlm_diagnostics import MAX_IMAGE_BYTES, inspect_frame, validate_frame
@@ -49,6 +50,12 @@ class VLMObserverNode(Node):
             raise ValueError("min_interval_s must be in [1,3600]")
         if not 1 <= self.max_result_age_s <= 3600:
             raise ValueError("max_result_age_s must be in [1,3600]")
+        self._observation_context = ReceiverObservationContext(
+            robot_id=self.robot_id,
+            max_status_age_s=self.declare_parameter(
+                "max_status_age_s", 1.0,
+            ).value,
+        )
 
         self.publisher = self.create_publisher(
             String, "vlm_diagnostics", status_qos()
@@ -57,12 +64,24 @@ class VLMObserverNode(Node):
             CompressedImage, "camera/image/compressed", self._receive_frame,
             telemetry_qos(),
         )
+        self.status_subscription = self.create_subscription(
+            String, "link_status", self._receive_status, status_qos(),
+        )
         self._future = None
         self._started_at = None
+        self._pending_context = None
         self._next_allowed = 0.0
         self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ros3-vlm")
         self._steady_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.timer = self.create_timer(0.2, self._poll, clock=self._steady_clock)
+
+    def _receive_status(self, message):
+        try:
+            self._observation_context.receive_status(message.data)
+        except ValueError:
+            self.get_logger().warning(
+                "Invalid link status ignored by read-only camera observer"
+            )
 
     def _receive_frame(self, message):
         # Drop freely rather than ever queueing images faster than inference.
@@ -77,6 +96,9 @@ class VLMObserverNode(Node):
         except ValueError:
             self.get_logger().warning("Invalid compressed frame ignored")
             return
+        # Snapshot *before* inference, so later status updates cannot rewrite
+        # the frame's receiver-side context.
+        self._pending_context = self._observation_context.sample_frame(now_s=now)
         self._started_at = now
         self._next_allowed = now + self.min_interval_s
         self._future = self._worker.submit(
@@ -88,6 +110,8 @@ class VLMObserverNode(Node):
             return
         completed = self._future
         self._future = None
+        context = self._pending_context
+        self._pending_context = None
         age = time.monotonic() - self._started_at
         try:
             description = completed.result()
@@ -95,6 +119,7 @@ class VLMObserverNode(Node):
             if age <= self.max_result_age_s:
                 description["robot_id"] = self.robot_id
                 description["processing_age_s"] = age
+                description["observation_context"] = context
                 self.publisher.publish(String(data=json.dumps(
                     description, allow_nan=False, sort_keys=True,
                 )))

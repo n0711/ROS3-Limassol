@@ -37,6 +37,7 @@ class VLMGraphTests(unittest.TestCase):
         from sensor_msgs.msg import CompressedImage
         from std_msgs.msg import String
 
+        from ros3_limassol.monitor import LinkStatus
         from ros3_limassol.ros_nodes import status_qos, telemetry_qos
         from ros3_limassol.vlm_ros_nodes import VLMObserverNode
 
@@ -52,12 +53,16 @@ class VLMGraphTests(unittest.TestCase):
             camera = source.create_publisher(
                 CompressedImage, "camera/image/compressed", telemetry_qos()
             )
+            link_status = source.create_publisher(
+                String, "link_status", status_qos()
+            )
             observer = VLMObserverNode(namespace=namespace, parameter_overrides=[
                 Parameter("robot_id", value="usv01"),
                 Parameter("model", value="mock-vision:1"),
                 Parameter("timeout_s", value=1.0),
                 Parameter("min_interval_s", value=1.0),
                 Parameter("max_result_age_s", value=5.0),
+                Parameter("max_status_age_s", value=5.0),
                 Parameter("use_sim_time", value=True),
             ])
             nodes.append(observer)
@@ -81,6 +86,17 @@ class VLMGraphTests(unittest.TestCase):
                     "inference_verified": False,
                 }
 
+            link = LinkStatus(
+                robot_id="usv01", state="STALE", age_s=2.0,
+                accepted=3, rejected=0, last_sequence=2,
+                last_rejection=None,
+            )
+            # Confirm delivery of status *before* the sampled image arrives.
+            status_deadline = time.monotonic() + 8
+            while not observer._observation_context.has_status and time.monotonic() < status_deadline:
+                link_status.publish(String(data=link.to_json()))
+                executor.spin_once(timeout_sec=0.05)
+            self.assertTrue(observer._observation_context.has_status)
             msg = CompressedImage()
             msg.format = "png"
             msg.data = single_pixel_png()
@@ -91,6 +107,15 @@ class VLMGraphTests(unittest.TestCase):
                     executor.spin_once(timeout_sec=0.05)
                 self.assertTrue(received, "No read-only VLM diagnostics observed")
                 self.assertEqual(received[0]["robot_id"], "usv01")
+                associated = received[0]["observation_context"]
+                self.assertEqual(
+                    associated["status_association"], "recent_receiver_delivery"
+                )
+                self.assertEqual(
+                    associated["status_at_frame_callback"]["state"], "STALE"
+                )
+                self.assertFalse(associated["camera_capture_time_verified"])
+                self.assertFalse(associated["same_physical_robot_verified"])
                 self.assertEqual(received[0]["description"]["scene_summary"], "Synthetic image")
                 self.assertFalse(received[0]["actuation_authority"])
                 self.assertEqual(len(model_calls), 1)
