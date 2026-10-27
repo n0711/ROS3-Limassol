@@ -25,6 +25,7 @@ from pathlib import Path
 import random
 
 from .evidence import build_evidence
+from .monitor import LATE_SAMPLE_POLICIES
 from .recording import MAX_RECORDS, Observation
 from .replay import run_replay
 from .simulator import UsvSimulator
@@ -36,7 +37,7 @@ MAX_DURATION_S = 3600.0
 MAX_RATE_HZ = 100.0
 MAX_EVENTS = 256
 
-_TOP_KEYS = {"seed", "duration_s", "tick_s", "stale_after_s", "robots"}
+_TOP_KEYS = {"seed", "duration_s", "tick_s", "stale_after_s", "late_samples", "robots"}
 _ROBOT_KEYS = {"robot_id", "rate_hz", "delay_s", "jitter_s", "loss", "burst_loss",
                "duplicate", "outages", "restarts"}
 _BURST_KEYS = {"enter", "exit"}
@@ -86,6 +87,7 @@ class Scenario:
     tick_s: float
     stale_after_s: float
     robots: tuple
+    late_samples: str = "reject"
 
 
 def parse_scenario(data):
@@ -129,7 +131,10 @@ def parse_scenario(data):
         raise ValueError("robot_id values must be unique")
     if int(duration / tick) + 1 > MAX_RECORDS // 2:
         raise ValueError("too many observation ticks for one recording")
-    return Scenario(seed, duration, tick, stale, tuple(models))
+    late = data.get("late_samples", "reject")
+    if late not in LATE_SAMPLE_POLICIES:
+        raise ValueError(f"late_samples must be one of {LATE_SAMPLE_POLICIES}")
+    return Scenario(seed, duration, tick, stale, tuple(models), late)
 
 
 def _intervals(value, where, duration):
@@ -274,12 +279,14 @@ def run_robot(model, scenario):
     arrivals, counts = _send_and_deliver(model, scenario)
     observations = _observations(arrivals, scenario)
     text = "".join(o.to_json() + "\n" for o in observations)
-    events = list(run_replay(io.StringIO(text), model.robot_id, scenario.stale_after_s))
+    events = list(run_replay(io.StringIO(text), model.robot_id, scenario.stale_after_s,
+                             scenario.late_samples))
     summary = events[-1]
     matched, unexplained = _match(model, scenario, _episodes(events))
     monitor_events = [e for e in events if e.get("event") != "summary"]
     rejections = build_evidence(io.BytesIO(text.encode("utf-8")), model.robot_id,
-                                scenario.stale_after_s)["rejection_reasons"]
+                                scenario.stale_after_s,
+                                scenario.late_samples)["rejection_reasons"]
     detected = [m for m in matched if m["detected"]]
     return {
         "robot_id": model.robot_id,
@@ -335,6 +342,7 @@ def run_scenario(scenario, record_dir=None):
         "report_version": REPORT_VERSION,
         "seed": scenario.seed, "duration_s": scenario.duration_s,
         "tick_s": scenario.tick_s, "stale_after_s": scenario.stale_after_s,
+        "late_samples": scenario.late_samples,
         "robots": robots,
         "interpretation": (
             "Synthetic link model on virtual time. Outages are declared ground "

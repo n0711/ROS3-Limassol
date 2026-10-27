@@ -56,9 +56,10 @@ multimodal fusion.
    independently known outage times and unrecordable-payload count.
 2. ~~Exercise multiple robot namespaces and controlled delay, jitter, loss and
    restarts. Define timing ground truth before comparing repeated runs.~~
-   Synthetic, seeded version added ([IMPAIRMENT.md](IMPAIRMENT.md)). Open
-   question it raised: whether late in-session samples should refresh
-   liveness instead of counting as rejected under jitter.
+   Synthetic, seeded version added ([IMPAIRMENT.md](IMPAIRMENT.md)). The
+   question it raised, whether late in-session samples should refresh
+   liveness, is answered by an opt-in `late_samples = liveness` policy
+   ([TELEMETRY.md](TELEMETRY.md#late-samples)); `reject` stays the default.
 3. ~~Add a receive-only MAVLink adapter with explicit message-to-schema mappings.~~
    Initial UDP adapter added ([MAVLINK.md](MAVLINK.md)). Next: record an
    ArduPilot or PX4 SITL session through it, then consider `GPS_RAW_INT` fix

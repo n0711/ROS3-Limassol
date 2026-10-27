@@ -61,7 +61,8 @@ rejected. The status payload fields are unchanged.
 `HEALTHY` keeps its meaning under either policy: a valid sample has arrived
 recently. Under jitter larger than the sample period, `reject` turns many fresh
 samples into rejections; [VALIDATION.md](VALIDATION.md) has a measured
-synthetic comparison of both policies. Choose
+synthetic comparison of both policies, reproducible with the
+[impairment tool](IMPAIRMENT.md) and its `late_samples` key. Choose
 one policy per experiment, and compare or pool evidence reports only when
 their `late_samples` values match.
 
