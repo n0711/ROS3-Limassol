@@ -58,9 +58,17 @@ worker is busy; results older than the configured maximum age are discarded.
 No raw image is republished, and no command topics/services exist in this node.
 
 `vlm_diagnostics.py` offers a corresponding ROS-independent one-image CLI.
-The observer does not automatically associate its sampled frames with
-VERA-MOT tracks, telemetry timestamps, or GNSS state. The independent
-text LLM and camera VLM paths are not a control system. See [VLM.md](VLM.md).
+The observer also subscribes to the matching `link_status` topic. A bounded
+`ReceiverObservationContext` keeps at most one delivered, validated
+LinkStatus. At a sampled camera callback, the node freezes that status
+only if recently delivered within the configured limit. Its observation
+context reports process-local monotonic callback timing and an observer
+session/sample index, or an explicit unavailable status.
+
+This creates a **receiver-side co-observation record**, not camera capture
+synchronization, publisher-to-receiver delay, GNSS state, physical identity
+verification or VERA-MOT track alignment. The independent text LLM and
+camera VLM paths are not a control system. See [VLM.md](VLM.md).
 
 ## Data flow
 
