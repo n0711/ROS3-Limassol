@@ -222,7 +222,14 @@ class CompareTests(unittest.TestCase):
                                            sim.sample(sent - start, wall).to_json()))
         records.sort(key=lambda o: (o.time_s, o.payload is None))
         text = "".join(o.to_json() + "\n" for o in records)
-        lines = [json.dumps(e) for e in log]
+        model = sc.robots[0]
+        settings = {"event": "scenario", "seed": sc.seed, "duration_s": sc.duration_s,
+                    "robot_id": model.robot_id, "delay_s": model.delay_s,
+                    "jitter_s": model.jitter_s, "loss": model.loss,
+                    "burst_loss": {"enter": model.burst_enter, "exit": model.burst_exit},
+                    "duplicate": model.duplicate,
+                    "outages": [list(o) for o in model.outages]}
+        lines = [json.dumps(settings)] + [json.dumps(e) for e in log]
         return compare_tool.compare(sc, lines, text)
 
     def test_periodic_live_run_matches_the_virtual_prediction(self):
@@ -275,6 +282,35 @@ class CompareTests(unittest.TestCase):
                 else:
                     self.assertAlmostEqual(a[key], b[key], places=6)
         self.assertIn("Model, live timing", compare_tool.markdown(report))
+
+    def test_comparison_requires_matching_relay_settings(self):
+        sc = scenario()
+        valid = {"event": "scenario", "seed": sc.seed,
+                 "duration_s": sc.duration_s, "robot_id": "usv01",
+                 "delay_s": 0.0, "jitter_s": 0.0, "loss": 0.0,
+                 "burst_loss": {"enter": 0.0, "exit": 1.0},
+                 "duplicate": 0.0, "outages": []}
+        t0 = {"event": "t0", "wall_ns": WALL0}
+        sample = {"event": "sample", "k": 0, "rel_s": 0.0,
+                  "outcome": "forwarded", "delays_s": [0.0]}
+        def records(*entries):
+            return [json.dumps(e) for e in entries]
+
+        with self.assertRaisesRegex(ValueError, "no scenario record"):
+            compare_tool.compare(sc, records(t0, sample), "")
+        with self.assertRaisesRegex(ValueError, "seed"):
+            compare_tool.compare(sc, records({**valid, "seed": sc.seed + 1},
+                                             t0, sample), "")
+        with self.assertRaisesRegex(ValueError, "robot_id"):
+            compare_tool.compare(sc, records({**valid, "robot_id": "usv02"},
+                                             t0, sample), "")
+        with self.assertRaisesRegex(ValueError, "loss"):
+            compare_tool.compare(sc, records({**valid, "loss": 0.3},
+                                             t0, sample), "")
+        with self.assertRaisesRegex(ValueError, "sample index"):
+            compare_tool.compare(sc, records(valid, t0, {**sample, "k": 1}), "")
+        with self.assertRaisesRegex(ValueError, "more than one scenario"):
+            compare_tool.load_relay_log(records(valid, valid, t0, sample))
 
     def test_relay_log_without_t0_is_rejected(self):
         with self.assertRaises(ValueError):
