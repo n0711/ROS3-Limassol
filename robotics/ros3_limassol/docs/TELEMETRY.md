@@ -53,8 +53,7 @@ highest already accepted in its session is rejected as
 With `late_samples = liveness` such a sample is **accepted** when its sequence
 is within the last 256 of the highest and has not been seen before. It then
 refreshes arrival recency, because it did arrive. It counts in `accepted`
-(and in a separate `late_accepted` counter in evidence reports and the MAVLink
-bridge summary), and `last_sequence` stays the highest. Repeats, samples too far
+(and in a separate `late_accepted` counter in evidence reports), and `last_sequence` stays the highest. Repeats, samples too far
 behind to check for repeats, and samples from retired sessions are still
 rejected. The status payload fields are unchanged.
 
@@ -66,6 +65,8 @@ synthetic comparison of both policies, reproducible with the
 one policy per experiment, and compare or pool evidence reports only when
 their `late_samples` values match.
 
-Select it with `--late-samples liveness` on `replay`, `evidence` and
-`mavlink_bridge`, or the `late_samples` parameter of the ROS `link_monitor`
-node (`late_samples:=liveness` with `usv_demo.launch.py`).
+Select it with `--late-samples liveness` on `replay` and `evidence`, or the
+`late_samples` parameter of the ROS `link_monitor` node (`late_samples:=liveness`
+with `usv_demo.launch.py`). The MAVLink bridge has no such option: it assigns
+sequence numbers itself in arrival order, so its monitor never sees a late
+sample, and the policy says nothing about MAVLink reordering.

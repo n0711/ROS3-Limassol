@@ -5,9 +5,10 @@
 `LinkMonitor(late_samples="liveness")` accepts a delayed, unseen sample of the
 current session (within 256 sequences of the highest) and lets it refresh
 arrival recency. The default `reject` policy is unchanged and remains the
-default everywhere. Replay, evidence (`late_samples`, `late_accepted` keys),
-the MAVLink bridge and the ROS `link_monitor` node (`late_samples` parameter,
-also exposed by `usv_demo.launch.py`) accept the option. New tests cover
+default everywhere. Replay, evidence (`late_samples`, `late_accepted` keys)
+and the ROS `link_monitor` node (`late_samples` parameter, also exposed by
+`usv_demo.launch.py`) accept the option. The MAVLink bridge does not: it
+numbers mapped samples in arrival order, so the policy could never apply. New tests cover
 default behaviour, single acceptance, duplicate and window rejection,
 session rules, configuration errors and CLI/report plumbing. The ROS
 parameter is exercised only by the Humble/Jazzy CI jobs; it was not run

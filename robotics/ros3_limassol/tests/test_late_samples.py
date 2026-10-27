@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from ros3_limassol import evidence, replay
+from ros3_limassol import evidence, mavlink_bridge, replay
 from ros3_limassol.mavlink import MavlinkTelemetryMapper
 from ros3_limassol.mavlink_bridge import BridgeSession
 from ros3_limassol.monitor import LinkMonitor
@@ -58,14 +58,13 @@ class PolicyPlumbingTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 replay.main([str(path), "--late-samples", "accept"])
 
-    def test_bridge_summary_reports_policy(self):
-        now = [0.0]
-        session = BridgeSession(MavlinkTelemetryMapper("usv01", 1),
-                                LinkMonitor(late_samples="liveness"),
-                                clock=lambda: now[0])
-        summary = session.summary()
-        self.assertEqual((summary["late_samples"], summary["late_accepted"]), ("liveness", 0))
-
+    def test_bridge_offers_no_late_sample_option(self):
+        # The bridge numbers samples in arrival order, so a policy could never apply.
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            mavlink_bridge.main(["--listen", "127.0.0.1:0", "--duration", "0.1",
+                                 "--late-samples", "liveness"])
+        self.assertNotIn("late_accepted", BridgeSession(
+            MavlinkTelemetryMapper("usv01", 1), LinkMonitor()).summary())
 
 if __name__ == "__main__":
     unittest.main()

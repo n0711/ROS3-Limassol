@@ -42,7 +42,7 @@ configured source.
 | `battery_pct` | latest `SYS_STATUS.battery_remaining` (%) | −1 means unknown |
 | `robot_id` | `--robot-id` | configured, not from MAVLink |
 | `session_id` | adapter | `mav<sysid>_<random>`, new per bridge process |
-| `sequence` | adapter | 0, 1, 2… per accepted sample |
+| `sequence` | adapter | 0, 1, 2… per accepted sample, in arrival order (so the monitor never sees a late sample; `late_samples` does not apply) |
 | `timestamp_ns` | receiver wall clock | `time_boot_ms` is not Unix time |
 
 A sample is **withheld** (not published, recorded or counted as rejected) and a
