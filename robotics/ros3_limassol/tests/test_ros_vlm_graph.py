@@ -93,10 +93,10 @@ class VLMGraphTests(unittest.TestCase):
             )
             # Confirm delivery of status *before* the sampled image arrives.
             status_deadline = time.monotonic() + 8
-            while not observer._context.has_status and time.monotonic() < status_deadline:
+            while not observer._observation_context.has_status and time.monotonic() < status_deadline:
                 link_status.publish(String(data=link.to_json()))
                 executor.spin_once(timeout_sec=0.05)
-            self.assertTrue(observer._context.has_status)
+            self.assertTrue(observer._observation_context.has_status)
             msg = CompressedImage()
             msg.format = "png"
             msg.data = single_pixel_png()
