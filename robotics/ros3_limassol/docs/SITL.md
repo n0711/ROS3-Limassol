@@ -1,8 +1,10 @@
 # ArduPilot SITL validation runbook (issue #28)
 
 This is how to run the first validation of the receive-only MAVLink bridge
-against ArduPilot SITL with independently known outages. **It has not been run
-yet.** Record real results in [VALIDATION.md](VALIDATION.md) only after a run.
+against ArduPilot SITL with independently known outages. It was first run on
+27 October 2026 with ArduPilot `Rover-4.6.3`; the results are in
+[VALIDATION.md](VALIDATION.md). Record any new run there too, and only after it
+has actually been run.
 
 ```text
 ArduPilot SITL ── MAVProxy ──(--out)──> udp_outage_relay ──> mavlink_bridge
@@ -39,9 +41,15 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14551 --system-id 1 \
 python tools/udp_outage_relay.py --listen 127.0.0.1:14550 --forward 127.0.0.1:14551 \
     --outage 30:35 --outage 70:72 --duration 120 --log relay-stationary.jsonl
 
-# 2c. SITL with MAVProxy, forwarding a copy to the relay
-Tools/autotest/sim_vehicle.py -v Rover --out udp:127.0.0.1:14550 --no-rebuild
+# 2c. SITL with MAVProxy; sim_vehicle.py already sends a copy to 127.0.0.1:14550
+Tools/autotest/sim_vehicle.py -v Rover --no-rebuild
 ```
+
+Do not add `--out udp:127.0.0.1:14550`. `sim_vehicle.py` already passes
+`--out 127.0.0.1:14550` to MAVProxy, and a second output to the same address
+sends every message twice. The first run did add it. The relay forwarded only
+the first source and counted the copy as `other_sources`, so the results were
+unaffected. Without a terminal, also pass `--mavproxy-args="--non-interactive"`.
 
 The relay's windows count from SITL's first datagram, while the bridge's
 `--duration` counts from bridge start. The extra 60 s leaves room for SITL to
@@ -51,9 +59,21 @@ If the bridge summary shows `battery_unknown` or no accepted samples,
 `GLOBAL_POSITION_INT` or `SYS_STATUS` is not streaming. In MAVProxy run
 `set streamrate 10`, or set the `SR*_` parameters, and record what you set.
 
-Run it **twice**: once stationary, and once while the vehicle moves (a mission
-in `AUTO`, or `GUIDED` moves) so heading and speed change. Use new file names
-for the second run; the tools refuse to overwrite.
+Expect `GLOBAL_POSITION_INT` at **1 Hz** for about the first 11 s of position
+data (Rover's default `SRx_POSITION`), until MAVProxy's stream request takes
+effect. Also expect the first few positions to be (0, 0), sent before the EKF
+origin is set. A 1 Hz stream sits on the default `--stale-after 1.0`; see
+[MAVLINK.md](MAVLINK.md#choosing---stale-after).
+
+Run it **twice**: once stationary, and once while the vehicle moves so heading
+and speed change. For example, in the MAVProxy console run `mode MANUAL`,
+`arm throttle` (SITL may need `param set ARMING_CHECK 0`), `rc 3 1750` and
+`rc 1 1650` to drive in a circle. A mission in `AUTO` or `GUIDED` moves also
+works. Use new file names for the second run; the tools refuse to overwrite.
+The first run was headless, so it sent the same RC overrides from a separate
+pymavlink script on a second MAVProxy output (`--out udp:127.0.0.1:14560`). That
+script is not part of this repository: it commands the simulated vehicle, and
+nothing in the measured path does.
 
 ## 3. Collect the evidence
 
@@ -72,7 +92,10 @@ timestamps in its samples, replays it, and prints one row per relay window:
 - **STALE after drop:** when the bridge went STALE, measured from the
   scheduled drop.
 - **STALE − expected:** the difference from `last forwarded + stale_after`.
-  On loopback this should be between 0 and one bridge tick (0.5 s by default).
+  On loopback this is normally between 0 and one bridge tick (0.5 s by
+  default). It can be negative by up to one position interval, because the
+  last forwarded datagram may be another message type sent after the last
+  position.
 - **HEALTHY after resume:** includes the wait for the next
   `GLOBAL_POSITION_INT`.
 
