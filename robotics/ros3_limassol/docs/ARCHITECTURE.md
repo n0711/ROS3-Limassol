@@ -23,6 +23,15 @@ version or a ROS 2 replacement.
 - **Rust core:** experimental alternative validation/replay implementation with
   optional authenticated envelopes; the Python ROS 2 adapter does not accept
   those signed envelopes.
+- **MAVLink bridge:** receives MAVLink over UDP from one system, maps
+  `GLOBAL_POSITION_INT` and `SYS_STATUS` to schema-v1 samples, and feeds the
+  same monitor and recorder. It never sends anything, and it numbers samples in
+  arrival order. It shows whether the autopilot's position messages reach this
+  receiver, not whether the vehicle is healthy. See [MAVLINK.md](MAVLINK.md).
+- **Impairment experiments:** run the same monitor against a seeded synthetic
+  link on virtual time and score it against declared outages. They characterise
+  the timeout rule under a link model; they do not measure a network. See
+  [IMPAIRMENT.md](IMPAIRMENT.md).
 
 All modes distinguish **receiver arrival recency** from source measurement
 freshness, delivery ratio, network delay, navigation correctness, and safety.
@@ -81,6 +90,11 @@ camera VLM paths are not a control system. See [VLM.md](VLM.md).
    recording the arrival time from its own monotonic clock.
 5. The ROS observer periodically publishes a JSON status on `link_status`.
 
+With MAVLink input, steps 1–3 are replaced by `mavlink_bridge`. It decodes
+checksum-verified frames received over UDP, builds the schema-v1 payload with
+its own session and arrival-order sequence numbers, and passes it straight to
+the monitor and, optionally, the recorder.
+
 The simulator and monitor run in separate ROS nodes. The plain-Python demo is an
 in-process experiment; it does not exercise a network or DDS.
 
@@ -94,6 +108,11 @@ With a 1.0 s timeout and a last accepted arrival at 1.9 s, an observation at
 Before the first valid sample, status is WAITING. After a valid arrival it is
 HEALTHY while `age_s < stale_after_s`; otherwise it is STALE. Any later accepted
 sample restores HEALTHY. Invalid or replayed samples do not reset the timeout.
+
+By default a sample whose sequence is not above the highest seen in its session
+is rejected. The opt-in `late_samples="liveness"` policy accepts unseen late
+samples within a bounded window for liveness, while still rejecting repeats.
+See [late samples](TELEMETRY.md#late-samples).
 
 This is an arrival-liveness estimate. A stopped publisher, transport disruption,
 and loss of upstream sensor data may all cause STALE. A source that transmits
