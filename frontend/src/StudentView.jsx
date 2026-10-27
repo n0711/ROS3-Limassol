@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Logo from './Logo';
 import { sendMetrics } from './api';
+import { makeTemporaryStudentId, requireCompleteIngest } from './metricsIngest';
 
 function StudentView({ sessionCode }) {
   const [mode, setMode] = useState('reflection'); // 'reflection' or 'live'
@@ -34,14 +35,14 @@ function StudentView({ sessionCode }) {
 
     const metrics = [{
       class_id: sessionCode,
-      student_id: Math.floor(Math.random() * 1000000), // Random student ID for anonymity
+      student_id: makeTemporaryStudentId(), // Temporary, positive, non-authenticated ID
       ...signalMap[signal],
       confidence: confidence * 2, // Scale 1-5 to 1-10
       timestamp: new Date().toISOString()
     }];
 
     try {
-      await sendMetrics(metrics);
+      requireCompleteIngest(await sendMetrics(metrics), metrics.length);
       console.log(`Live signal sent: ${signal}, Confidence: ${confidence}`);
       setFeedback(`${emoji} ${signal} sent!`);
     } catch (error) {
@@ -57,7 +58,7 @@ function StudentView({ sessionCode }) {
 
     // Build array of metric records - one for each signal count
     const metrics = [];
-    const studentId = Math.floor(Math.random() * 1000000); // Same student ID for all records in this submission
+    const studentId = makeTemporaryStudentId(); // One positive temporary ID shared by this batch
 
     // Add records for each "stuck" signal
     for (let i = 0; i < signals.stuck; i++) {
@@ -116,8 +117,8 @@ function StudentView({ sessionCode }) {
     }
 
     try {
-      const result = await sendMetrics(metrics);
-      console.log('Submitted:', { name, sessionNum, signals, confidence });
+      const result = requireCompleteIngest(await sendMetrics(metrics), metrics.length);
+      console.log('Submitted reflection metrics:', { sessionNum, signals, confidence });
       console.log('Backend response:', result);
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
@@ -229,7 +230,7 @@ function StudentView({ sessionCode }) {
           </div>
 
           <p className="student-footer">
-            🔴 Live mode • Real-time feedback • Anonymous
+            Live mode • Prototype feedback • Identity is not verified
           </p>
         </div>
       </div>
@@ -428,7 +429,7 @@ function StudentView({ sessionCode }) {
         </form>
 
         <p className="student-footer">
-          Anonymous • Privacy-first • Used only to improve your learning
+          Prototype: your name is not sent with metrics. Anonymity is not guaranteed.
         </p>
       </div>
     </div>
