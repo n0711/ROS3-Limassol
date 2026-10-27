@@ -162,7 +162,13 @@ clock-regression errors, wrong robot ID and context immutability.
 The ROS DDS graph test requires an independently delivered status before
 a camera frame and checks the resulting read-only diagnostic context.
 
-**Configured, not confirmed passed until CI reports completion.**
+**CI passed** on the commit that introduced this, `3b2c297` (#21):
+[run 40448049811](https://github.com/n0711/ROS3-Limassol/actions/runs/40448049811).
+Every job was green: the core tests on Ubuntu (Python 3.10, 3.12) and Windows
+(3.12), and the Humble and Jazzy DDS jobs. Both ROS jobs import `rclpy` before
+`colcon test`, so the ROS graph tests' only skip condition did not apply.
+This was confirmed on 27 October 2026 from job and step outcomes; the logs
+were not inspected.
 Passing CI is evidence only for synthetic message flow and same-process
 receiver callback timing, not camera/sensor timestamp synchronization
 or field performance.
@@ -179,8 +185,12 @@ tests exercise a DDS compressed-frame-to-diagnostic round trip using a
 fake inference result. The optional ROS VLM launch is checked in Humble
 and Jazzy CI, with `sensor_msgs` installed in both environments.
 
-**Configured does not mean passed:** consult the specific GitHub Actions
-run before claiming execution. Even successful CI does not verify a
+**CI passed** on `262596a` (#20):
+[run 40397602537](https://github.com/n0711/ROS3-Limassol/actions/runs/40397602537).
+Every job was green, including the Humble and Jazzy jobs that run the DDS
+compressed-frame round trip with a fake inference result. This was confirmed
+on 27 October 2026 from job and step outcomes; the logs were not inspected.
+Even successful CI does not verify a
 vision model's accuracy, real camera throughput, synchronized multimodal
 fusion, object-tracker agreement, physical hardware, or safety.
 See [VLM.md](VLM.md).
@@ -197,8 +207,12 @@ publisher or tool-call interface. New tests cover bounded status filtering,
 model request contracts, schema rejection, and a ROS topic round trip
 with mocked inference.
 
-**This documents configured checks, not passed results until a CI run is
-observed.** Even when green, neither actual model accuracy, latency under
+**CI passed** on `88600e5` (#19):
+[run 40392663678](https://github.com/n0711/ROS3-Limassol/actions/runs/40392663678).
+Every job was green, including the ROS topic round trip with mocked inference
+in the Humble and Jazzy jobs. No model ran in CI. This was confirmed on
+27 October 2026 from job and step outcomes; the logs were not inspected.
+Even so, neither actual model accuracy, latency under
 field load, field telemetry, autonomy nor safety is established. See
 [LLM.md](LLM.md).
 
@@ -213,8 +227,11 @@ Python demo, replay, and evidence command-line interfaces. The script checks the
 synthetic state transitions, accepted/rejected counts, recording observation
 counts, and SHA-256 fingerprint. A nonzero result fails the CI job.
 
-**Status:** this describes configured checks, not a verified pass. Refer to the
-corresponding GitHub Actions job outcome before claiming success. It does not
+**CI passed** on `15c9829` (#17):
+[run 40323112815](https://github.com/n0711/ROS3-Limassol/actions/runs/40323112815).
+Both ROS jobs, which run `check_ros_quickstart.py` and then `colcon test`,
+succeeded. This was confirmed on 27 October 2026 from job and step outcomes;
+the logs were not inspected. It does not
 measure DDS timing, network delay, sensor freshness, field reliability, or
 vehicle safety. The source-tree unit tests and DDS graph tests are still required.
 
