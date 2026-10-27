@@ -14,9 +14,9 @@ This list separates source-confirmed behavior from historical test reports. It i
 ## Classroom
 
 - Reflection dashboards use mock data. Live dashboards simulate updates rather than displaying API submissions.
-- Student submissions use random IDs, which can be zero and trigger validation failure. IDs are not stable participant identities.
-- The reflection form requests a name and logs it locally; do not treat its "Anonymous" label as a verified privacy guarantee.
-- The UI does not use insertion-report counts to distinguish partial ingestion from complete success.
+- Classroom submission IDs are now guaranteed to be positive (1..1,000,000), but remain temporary, random, unauthenticated IDs; they do **not** establish stable or anonymous participant identity. IDs are not stable participant identities.
+- The reflection form still requests a name, but no longer logs it with the submission; it is not included in metrics sent to the API. This is not verified anonymity: temporary IDs, timing, network/server metadata and other systems may still identify participants.
+- Classroom live and reflection submission success now requires all expected rows to be confirmed inserted with zero reported errors. A partial HTTP 200 response is treated as failure; rollback/retry idempotency is not implemented.
 - Session codes are client-generated, without authenticated server session management.
 - The shared API key is visible in the browser bundle. There is no per-user or per-class authorization.
 - CORS allows only localhost ports 5173 and 5174.
