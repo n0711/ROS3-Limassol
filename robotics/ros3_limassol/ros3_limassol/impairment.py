@@ -158,9 +158,38 @@ def _times(value, where, duration):
     return result
 
 
+@dataclass(frozen=True)
+class SampleFate:
+    """The link model's random decisions for one sample (outages apply separately)."""
+    burst: bool     # the Gilbert-Elliott chain is in its loss state
+    lost: bool      # independent loss
+    copies: int     # 1, or 2 when duplicated
+    delays: tuple   # one-way delay in seconds for the first and second copy
+
+
+def link_fates(model, seed):
+    """Yield one SampleFate per sample, in sample order, without end.
+
+    This is the model's only source of randomness. Every sample draws the same
+    values in the same order whatever happens to it (common random numbers),
+    and the burst state advances on every sample. A caller that applies the
+    fates to live traffic therefore gives its k-th sample exactly what virtual
+    sample k gets for the same seed and robot.
+    """
+    rng = random.Random(f"{seed}:{model.robot_id}")
+    bad_state = False
+    while True:
+        bad_state = (rng.random() >= model.burst_exit) if bad_state else (
+            rng.random() < model.burst_enter)
+        lost = rng.random() < model.loss
+        copies = 2 if rng.random() < model.duplicate else 1
+        delays = tuple(model.delay_s + rng.uniform(0.0, model.jitter_s) for _ in range(2))
+        yield SampleFate(bad_state, lost, copies, delays)
+
+
 def _send_and_deliver(model, scenario):
     """Return (arrivals, counts). Arrivals are (time_s, order, payload)."""
-    rng = random.Random(f"{scenario.seed}:{model.robot_id}")
+    fates = link_fates(model, scenario.seed)
     counts = {"generated": 0, "dropped_outage": 0, "dropped_loss": 0,
               "dropped_burst": 0, "duplicated": 0, "delivered_after_end": 0}
     arrivals = []
@@ -168,7 +197,6 @@ def _send_and_deliver(model, scenario):
     session = 0
     sim = UsvSimulator(model.robot_id, blackout_duration_s=0.0,
                        session_id=f"{model.robot_id}_s0")
-    bad_state = False
     period = 1.0 / model.rate_hz
     for index in range(int(scenario.duration_s * model.rate_hz) + 1):
         sent = index * period
@@ -181,27 +209,20 @@ def _send_and_deliver(model, scenario):
                                session_id=f"{model.robot_id}_s{session}")
         payload = sim.sample(sent, int(round(sent * 1e9))).to_json()
         counts["generated"] += 1
-        # Common random numbers: every sample draws the same values in the same
-        # order whatever happens to it, so changing one parameter does not
-        # reshuffle the others. The burst state advances on every sample.
-        bad_state = (rng.random() >= model.burst_exit) if bad_state else (
-            rng.random() < model.burst_enter)
-        lost = rng.random() < model.loss
-        copies = 2 if rng.random() < model.duplicate else 1
-        delays = [model.delay_s + rng.uniform(0.0, model.jitter_s) for _ in range(2)]
+        fate = next(fates)  # drawn for every sample, whatever happens to it
         if any(start <= sent < end for start, end in model.outages):
             counts["dropped_outage"] += 1
             continue
-        if bad_state:
+        if fate.burst:
             counts["dropped_burst"] += 1
             continue
-        if lost:
+        if fate.lost:
             counts["dropped_loss"] += 1
             continue
-        if copies == 2:
+        if fate.copies == 2:
             counts["duplicated"] += 1
-        for copy in range(copies):
-            arrival = sent + delays[copy]
+        for copy in range(fate.copies):
+            arrival = sent + fate.delays[copy]
             if arrival > scenario.duration_s:
                 counts["delivered_after_end"] += 1
                 continue
@@ -267,6 +288,16 @@ def _match(model, scenario, episodes):
     unexplained = [{"stale_at_s": s, "healthy_at_s": h}
                    for i, (s, h) in enumerate(episodes) if i not in used]
     return matched, unexplained
+
+
+def match_outages(model, scenario, events):
+    """Score monitor ``events`` (replay output) against ``model.outages``.
+
+    Returns ``(matched, unexplained)`` exactly as the report's
+    ``ground_truth`` uses them, so a live recording can be scored with the
+    same rule as a virtual run. Event times must share the outages' time base.
+    """
+    return _match(model, scenario, _episodes(events))
 
 
 def run_robot(model, scenario):

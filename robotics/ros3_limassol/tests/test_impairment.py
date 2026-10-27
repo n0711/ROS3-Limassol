@@ -8,6 +8,7 @@ import unittest
 from ros3_limassol import impairment
 from ros3_limassol.evidence import build_evidence
 from ros3_limassol.impairment import parse_scenario, run_scenario
+from ros3_limassol.replay import run_replay
 
 
 def scenario(robots, **top):
@@ -169,6 +170,43 @@ class RecordingAndCliTests(unittest.TestCase):
                             encoding="utf-8")
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 impairment.main([str(path)])
+
+
+class LiveAlignmentTests(unittest.TestCase):
+    """Public helpers that let live traffic share the model's randomness and scoring."""
+
+    def test_link_fates_reproduce_the_reported_link_counts(self):
+        sc = scenario([{"robot_id": "usv01", "delay_s": 0.1, "jitter_s": 0.3, "loss": 0.1,
+                        "burst_loss": {"enter": 0.05, "exit": 0.3}, "duplicate": 0.05}])
+        link = robot(run_scenario(sc), "usv01")["link"]
+        fates = impairment.link_fates(sc.robots[0], sc.seed)
+        drawn = [next(fates) for _ in range(link["generated"])]
+        delivered = [f for f in drawn if not f.burst and not f.lost]
+        self.assertEqual(sum(f.burst for f in drawn), link["dropped_burst"])
+        self.assertEqual(sum(not f.burst and f.lost for f in drawn), link["dropped_loss"])
+        self.assertEqual(sum(f.copies == 2 for f in delivered), link["duplicated"])
+        self.assertTrue(all(0.1 <= d <= 0.4 for f in drawn for d in f.delays))
+
+    def test_link_fates_are_reproducible_and_independent_per_robot(self):
+        sc = scenario([{"robot_id": "usv01", "loss": 0.5}, {"robot_id": "usv02", "loss": 0.5}])
+
+        def first_losses(model):
+            fates = impairment.link_fates(model, sc.seed)
+            return [next(fates).lost for _ in range(200)]
+
+        self.assertEqual(first_losses(sc.robots[0]), first_losses(sc.robots[0]))
+        self.assertNotEqual(first_losses(sc.robots[0]), first_losses(sc.robots[1]))
+
+    def test_match_outages_scores_a_replayed_recording_like_the_report(self):
+        sc = scenario([{"robot_id": "usv01", "loss": 0.2,
+                        "outages": [[5, 8], [15, 15.5], [20, 23]]}])
+        with tempfile.TemporaryDirectory() as directory:
+            report = robot(run_scenario(sc, directory), "usv01")
+            with (Path(directory) / report["recording"]).open(encoding="utf-8") as stream:
+                events = list(run_replay(stream, "usv01", sc.stale_after_s))
+        matched, unexplained = impairment.match_outages(sc.robots[0], sc, events)
+        self.assertEqual(matched, report["ground_truth"]["outages"])
+        self.assertEqual(unexplained, report["ground_truth"]["unexplained_stale_episodes"])
 
 
 if __name__ == "__main__":

@@ -108,6 +108,58 @@ Observations from this synthetic sweep:
    Whether to accept late in-session samples for liveness is an open design
    question; this tool only measures it.
 
+## Live comparison on ArduPilot SITL
+
+To check whether the model predicts a real stack, the same scenario can be
+applied to live MAVLink traffic from ArduPilot SITL (issue #33):
+
+```text
+ArduPilot SITL ── MAVProxy ──> udp_impairment_relay ──> mavlink_bridge
+                  (4 Hz)       :14550, scenario + seed     :14551, --tick 0.1
+```
+
+```sh
+# From robotics/ros3_limassol, as in SITL.md; one terminal each
+python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14551 --stale-after 1.0 \
+    --tick 0.1 --record live.jsonl --duration 350
+python tools/udp_impairment_relay.py --listen 127.0.0.1:14550 --forward 127.0.0.1:14551 \
+    --scenario docs/impairment-live-burst.json --warmup 30 --log relay.jsonl
+Tools/autotest/sim_vehicle.py -v Rover --no-rebuild --mavproxy-args="--streamrate 4"
+python tools/compare_impairment.py docs/impairment-live-burst.json relay.jsonl live.jsonl
+```
+
+**How live traffic is aligned with the model:**
+- The relay forwards unchanged for `--warmup` seconds, which skips ArduPilot's
+  1 Hz boot phase. The next `GLOBAL_POSITION_INT` defines t = 0.
+- The k-th position datagram after that is sample k. It receives `link_fates`'
+  k-th fate (burst state, independent loss, duplication, delays): the same
+  random stream and draw order the virtual model gives its sample k.
+- Every other datagram is dropped inside outages and while the latest sample
+  left the burst model in its loss state; otherwise it is forwarded after the
+  fixed delay.
+- Outages are windows on the relay clock and drop everything.
+
+`compare_impairment.py` aligns the bridge recording to the relay's t = 0,
+replays it, and scores it with `match_outages`, the rule the virtual report
+uses. Next to it, it runs the virtual model on the same scenario. Its **fate
+agreement** line counts samples whose outcome (outage, burst, loss, forwarded)
+matches the virtual model's. They can differ only where live timing moves a
+sample across an outage boundary.
+
+**Two structural differences to keep in mind:**
+- **The bridge numbers samples in arrival order**, so on this path reordering
+  and duplicates are never rejected; every arrival refreshes liveness. That
+  matches the virtual model's `late_samples: "liveness"` policy when
+  duplication is off, and does not match `reject`.
+- **Live samples are not phase-locked to the scenario.** Virtual samples fall
+  exactly on outage boundaries (for example t = 63.0 for an outage ending at
+  63 s). Live ones arrive anywhere within the 0.25 s period, so live recovery
+  includes the wait for the next position, about half a period on average.
+
+The four profiles used are `docs/impairment-live-{clean,jitter,loss,burst}.json`.
+Each runs at 4 Hz with `stale_after_s` 1.0 and outages of 3 s, 0.8 s and 3 s in
+300 s. The seed is set per run.
+
 ## What this does not establish
 
 The link model is synthetic. It is not a DDS, UDP, radio or MAVLink
