@@ -72,8 +72,10 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jso
 `GLOBAL_POSITION_INT` and `SYS_STATUS` are mapped explicitly onto the telemetry
 schema, so the recording replays and exports evidence as above. The bridge
 **never sends MAVLink** — no heartbeats, stream requests or commands. Tested with
-independently encoded frames and a local UDP sender; no autopilot SITL or
-physical link has been verified. See the [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md).
+independently encoded frames, a local UDP sender and ArduPilot Rover SITL over
+loopback with scripted outages ([validation](robotics/ros3_limassol/docs/VALIDATION.md)).
+No PX4 SITL, radio or physical link has been verified. See the
+[MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md).
 
 ## Offline anomaly and vision evidence (experimental)
 
