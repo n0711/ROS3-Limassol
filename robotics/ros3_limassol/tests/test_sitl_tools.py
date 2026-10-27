@@ -25,6 +25,13 @@ compare_tool = load("compare_outages")
 WALL0 = 1_800_000_000_000_000_000
 
 
+def mavlink_frame(system_id, version=2):
+    """A minimal frame header carrying ``system_id`` (the relay reads headers only)."""
+    if version == 1:
+        return bytes([0xFE, 0, 0, system_id, 1, 33])
+    return bytes([0xFD, 0, 0, 0, 0, system_id, 1, 33, 0, 0])
+
+
 class FakeSocket:
     def __init__(self):
         self.sent = []
@@ -34,13 +41,14 @@ class FakeSocket:
 
 
 class RelayTests(unittest.TestCase):
-    def relay(self, windows):
+    def relay(self, windows, **kwargs):
         self.now = 50.0
         self.events = []
         self.out = FakeSocket()
         return relay_tool.OutageRelay(
             None, self.out, ("127.0.0.1", 9), windows, emit=self.events.append,
-            clock=lambda: self.now, wall_ns=lambda: WALL0 + int(round((self.now - 50) * 1e9)))
+            clock=lambda: self.now, wall_ns=lambda: WALL0 + int(round((self.now - 50) * 1e9)),
+            **kwargs)
 
     def feed(self, relay, until_s, source=("127.0.0.1", 5000)):
         for i in range(int(round(until_s * 10)) + 1):
@@ -60,6 +68,33 @@ class RelayTests(unittest.TestCase):
         self.assertEqual(events["drop_end"]["dropped"], 10)
         self.assertEqual(events["first_forwarded_after"]["wall_ns"], WALL0 + 3_000_000_000)
         self.assertEqual(relay.summary()["windows_completed"], 1)
+
+    def test_system_filter_drops_only_that_vehicle_and_tracks_its_ground_truth(self):
+        relay = self.relay([(2.0, 3.0)], system_id=2)
+        for i in range(51):  # 0.0 .. 5.0 s; vehicles 1 and 2 share the link
+            self.now = 50.0 + i / 10
+            relay._advance(relay.elapsed() or 0.0)
+            relay.handle(mavlink_frame(1), ("127.0.0.1", 5000))
+            relay.handle(mavlink_frame(2, version=1 if i % 2 else 2), ("127.0.0.1", 5000))
+        events = {e["event"]: e for e in self.events}
+        self.assertEqual((relay.dropped, relay.forwarded), (10, 51 + 41))
+        self.assertEqual((events["drop_end"]["dropped"], events["drop_end"]["passed"]), (10, 10))
+        # Ground truth refers to vehicle 2 only, not to vehicle 1's frames around it.
+        self.assertEqual(events["drop_start"]["last_forwarded_wall_ns"], WALL0 + 1_900_000_000)
+        self.assertEqual(events["first_forwarded_after"]["wall_ns"], WALL0 + 3_000_000_000)
+        self.assertEqual(events["first_datagram"]["system_id"], 2)
+        sent = [relay_tool.frame_system_id(data) for data, _ in self.out.sent]
+        self.assertEqual((sent.count(1), sent.count(2)), (51, 41))   # vehicle 1 never dropped
+
+    def test_system_filter_never_drops_datagrams_without_a_mavlink_header(self):
+        relay = self.relay([(0.0, 1.0)], system_id=2)
+        self.now = 50.5
+        relay.handle(b"not mavlink", ("127.0.0.1", 5000))
+        relay.handle(mavlink_frame(2), ("127.0.0.1", 5000))
+        self.assertEqual((relay.forwarded, relay.dropped), (1, 1))
+        self.assertEqual(relay_tool.frame_system_id(b"\xfd\x01"), None)
+        with self.assertRaises(ValueError):
+            self.relay([], system_id=256)
 
     def test_forwards_one_way_from_a_single_source(self):
         relay = self.relay([])

@@ -21,6 +21,13 @@ and discarded.
 The JSON Lines log records wall-clock (``time.time_ns``) instants: each
 window's scheduled start/end, the last datagram forwarded before it and the
 first forwarded after it. Those are the ground truth for the arrival gap.
+
+With ``--system-id N`` (issue #41), a window drops only datagrams whose first
+MAVLink frame comes from system N, and forwards every other datagram. This
+models an outage of one vehicle on a link several vehicles share. The
+"last forwarded" and "first forwarded after" instants then refer to system N
+only, and each window also counts the other systems' datagrams it passed.
+Datagrams without a recognisable MAVLink header are never dropped in this mode.
 """
 
 import argparse
@@ -38,6 +45,15 @@ def parse_endpoint(value):
     if not sep or not host or not port.isdigit() or not 0 <= int(port) <= 65535:
         raise argparse.ArgumentTypeError("expected HOST:PORT")
     return host.strip("[]"), int(port)
+
+
+def frame_system_id(data):
+    """MAVLink system ID of the first frame in ``data``, or None."""
+    if len(data) >= 6 and data[0] == 0xFE:     # MAVLink 1: magic, len, seq, sysid
+        return data[3]
+    if len(data) >= 10 and data[0] == 0xFD:    # MAVLink 2: magic, len, flags x2, seq, sysid
+        return data[5]
+    return None
 
 
 def parse_window(value):
@@ -70,10 +86,13 @@ class OutageRelay:
     """
 
     def __init__(self, listen_sock, forward_sock, forward_to, windows, *,
-                 emit, clock=time.monotonic, wall_ns=time.time_ns):
+                 emit, clock=time.monotonic, wall_ns=time.time_ns, system_id=None):
+        if system_id is not None and (type(system_id) is not int or not 0 <= system_id <= 255):
+            raise ValueError("system_id must be an integer in [0, 255]")
         self.listen = listen_sock
         self.out = forward_sock
         self.forward_to = forward_to
+        self.system_id = system_id  # None: outages drop every datagram
         self.windows = validate_windows(windows)
         self.emit = emit
         self.clock = clock
@@ -86,6 +105,7 @@ class OutageRelay:
         self._last_forwarded_ns = None
         self._state = [None] * len(self.windows)  # None -> "open" -> "closed"
         self._window_drops = [0] * len(self.windows)
+        self._window_passed = [0] * len(self.windows)   # other systems, with system_id
 
     def _wall_at(self, offset_s):
         return self.origin[1] + int(round(offset_s * 1e9))
@@ -105,7 +125,8 @@ class OutageRelay:
                 self._state[index] = "closing"
                 self.emit({"event": "drop_end", "window": index,
                            "scheduled_s": end, "scheduled_wall_ns": self._wall_at(end),
-                           "dropped": self._window_drops[index]})
+                           "dropped": self._window_drops[index],
+                           "passed": self._window_passed[index]})
 
     def _in_window(self, elapsed):
         for index, (start, end) in enumerate(self.windows):
@@ -121,19 +142,25 @@ class OutageRelay:
             self.emit({"event": "first_datagram", "wall_ns": now_ns,
                        "source": f"{address[0]}:{address[1]}",
                        "forward_to": f"{self.forward_to[0]}:{self.forward_to[1]}",
-                       "windows": [list(w) for w in self.windows]})
+                       "windows": [list(w) for w in self.windows],
+                       "system_id": self.system_id})
         if address != self.source:
             self.other_sources += 1
             return
         elapsed = self.elapsed()
         self._advance(elapsed)
         index = self._in_window(elapsed)
+        targeted = self.system_id is None or frame_system_id(data) == self.system_id
         if index is not None:
-            self.dropped += 1
-            self._window_drops[index] += 1
-            return
+            if targeted:
+                self.dropped += 1
+                self._window_drops[index] += 1
+                return
+            self._window_passed[index] += 1
         self.out.sendto(data, self.forward_to)
         self.forwarded += 1
+        if not targeted:
+            return  # ground-truth instants track only the targeted system
         self._last_forwarded_ns = now_ns
         for i, state in enumerate(self._state):
             if state == "closing":
@@ -190,12 +217,17 @@ def main(args=None):
     parser.add_argument("--outage", type=parse_window, action="append", default=[],
                         metavar="START:END", help="seconds after the first datagram; repeatable")
     parser.add_argument("--duration", type=float, help="stop this many seconds after the first datagram")
+    parser.add_argument("--system-id", type=int, metavar="N",
+                        help="drop only frames from MAVLink system N during outages "
+                             "(default: drop every datagram)")
     parser.add_argument("--log", metavar="PATH", help="create a JSON Lines log; never overwrite")
     options = parser.parse_args(args)
     if options.listen == options.forward:
         parser.error("--listen and --forward must differ")
     if options.duration is not None and not options.duration > 0:
         parser.error("--duration must be positive")
+    if options.system_id is not None and not 0 <= options.system_id <= 255:
+        parser.error("--system-id must be in [0, 255]")
     try:
         windows = validate_windows(options.outage, options.duration)
     except ValueError as exc:
@@ -213,7 +245,8 @@ def main(args=None):
         with socket.socket(_family(options.listen[0]), socket.SOCK_DGRAM) as listen, \
                 socket.socket(_family(options.forward[0]), socket.SOCK_DGRAM) as out:
             listen.bind(options.listen)
-            relay = OutageRelay(listen, out, options.forward, windows, emit=emit)
+            relay = OutageRelay(listen, out, options.forward, windows, emit=emit,
+                                system_id=options.system_id)
             try:
                 run(relay, options.duration)
             except KeyboardInterrupt:
