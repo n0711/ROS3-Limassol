@@ -68,6 +68,7 @@ jobs:
           ros2 launch ros3_limassol record_telemetry.launch.py --show-args
           ros2 launch ros3_limassol llm_diagnostics.launch.py --show-args
           ros2 launch ros3_limassol vlm_observer.launch.py --show-args
+          ros2 pkg executables ros3_limassol | grep -q simready_camera_probe
           python3 robotics/ros3_limassol/tools/check_ros_quickstart.py
           colcon test --packages-select ros3_limassol --event-handlers console_direct+
           colcon test-result --verbose
@@ -94,6 +95,7 @@ jobs:
           ros2 launch ros3_limassol record_telemetry.launch.py --show-args
           ros2 launch ros3_limassol llm_diagnostics.launch.py --show-args
           ros2 launch ros3_limassol vlm_observer.launch.py --show-args
+          ros2 pkg executables ros3_limassol | grep -q simready_camera_probe
           python3 robotics/ros3_limassol/tools/check_ros_quickstart.py
           colcon test --packages-select ros3_limassol --event-handlers console_direct+
           colcon test-result --verbose
