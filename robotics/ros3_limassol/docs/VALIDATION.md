@@ -1,5 +1,24 @@
 # Validation record
 
+## Receiver-only context alongside local VLM (27 October 2026)
+
+The optional camera node now retains **one** recently delivered
+`LinkStatus` and snapshots it as a camera frame callback is accepted.
+A bounded configurable age limit rejects old status, a mismatched robot
+ID is ignored, and the snapshot cannot be retroactively updated during
+model inference. The frame report marks capture-time, source-clock,
+physical robot identity and VERA-MOT track association unverified.
+A new ROS-independent test suite covers staleness, absent status,
+clock-regression errors, wrong robot ID and context immutability.
+The ROS DDS graph test requires an independently delivered status before
+a camera frame and checks the resulting read-only diagnostic context.
+
+**Configured, not confirmed passed until CI reports completion.**
+Passing CI is evidence only for synthetic message flow and same-process
+receiver callback timing, not camera/sensor timestamp synchronization
+or field performance.
+
+
 ## Local compressed-image VLM observer (introduced 26 October 2026)
 
 This change adds an opt-in `sensor_msgs/msg/CompressedImage` ROS 2
