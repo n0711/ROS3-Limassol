@@ -244,6 +244,26 @@ python -m ros3_limassol.simready_evidence simready-manifest.json run.jsonl --ass
 Review [SIMREADY.md](docs/SIMREADY.md) for the complete protocol, example
 manifest and explicit validation limits.
 
+## Read-only ROS 2 camera format probe (optional)
+
+After building and sourcing ROS 2 Humble or Jazzy, observe an existing
+`sensor_msgs/msg/CompressedImage` topic **without** running a vision model:
+
+```bash
+ros2 run ros3_limassol simready_camera_probe --ros-args \
+  -p camera_topic:=/camera/image_raw/compressed \
+  -p max_frames:=20 -p timeout_s:=15.0 \
+  -p output_path:=/tmp/ros3-camera-probe-01.json
+```
+
+The probe writes an exclusive JSON report containing only receiver-side
+codec/size/header counts (no images, frame hashes or captions). H264/HEVC
+`CompressedImage` is **not** compatible with this package's JPEG/PNG
+VLM subscriber. See the [SimReady camera integration protocol](docs/SIMREADY.md)
+for raw-image-to-JPEG conversion, verify-before-inference requirements and
+the `simready_evidence --camera-report` command. Passing synthetic DDS
+tests does not verify real Isaac Sim output or camera timing.
+
 ## Tests and packaging
 
 From this package directory:

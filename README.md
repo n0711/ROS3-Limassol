@@ -152,6 +152,23 @@ and run from the package directory:
 python -m ros3_limassol.simready_evidence simready-manifest.json run.jsonl --asset-file /path/to/asset.usd
 ```
 
+## SimReady camera bridge compatibility check
+
+The optional, **read-only** `simready_camera_probe` ROS 2 executable
+counts delivered `sensor_msgs/msg/CompressedImage` formats and JPEG/PNG
+header compatibility without retaining image data. NVIDIA Isaac Sim 6.2 can
+publish H.264/HEVC CompressedImage, which **cannot be used directly** by
+ROS3's JPEG/PNG VLM observer. Convert a raw ROS image to JPEG/PNG using an
+independently installed ROS 2 image transport plugin and verify the topic
+before any local VLM run.
+
+A camera probe report can be bound to the SimReady manifest and independently
+captured telemetry recording using `simready_evidence --camera-report`.
+It is a **caller-supplied** report, not independent proof of simulator origin,
+asset loading, camera synchronization, or physical validation.
+
+See the [camera bridge and verification guide](robotics/ros3_limassol/docs/SIMREADY.md).
+
 ## Testing and validation
 
 From `robotics/ros3_limassol`:

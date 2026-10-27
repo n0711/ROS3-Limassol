@@ -8,8 +8,10 @@ import tempfile
 import unittest
 
 from ros3_limassol.demo import run_demo
+from ros3_limassol.camera_receiver_evidence import CameraReceiverEvidence
+from test_vlm_diagnostics import sample_png
 from ros3_limassol.simready_evidence import (
-    build_simready_evidence, main, validate_manifest,
+    build_simready_evidence, main, validate_manifest, validate_camera_report,
 )
 
 ASSET = b"#usda 1.0\n"  # Synthetic fixture, not a published NVIDIA asset.
@@ -56,6 +58,58 @@ class SimreadyEvidenceTests(unittest.TestCase):
     def test_unchecked_asset_never_marked_verified(self):
         report = build_simready_evidence(raw_manifest(), io.BytesIO(trace()))
         self.assertFalse(report["asset"]["local_bytes_sha256_verified"])
+
+    def test_bind_camera_probe_without_claiming_simulator_origin(self):
+        receiver = CameraReceiverEvidence(max_frames=2)
+        receiver.observe(sample_png(), "png", 100.0)
+        receiver.observe(b"\x00\x00\x00\x01", "h264", 100.1)
+        raw = json.dumps(receiver.report(reason="max_frames")).encode("utf-8")
+        report = build_simready_evidence(
+            raw_manifest(), io.BytesIO(trace()), camera_report_bytes=raw,
+        )
+        camera = report["camera_receiver_evidence"]
+        self.assertEqual(camera["topic"], manifest()["camera_topic"])
+        self.assertEqual(camera["report_sha256"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(camera["received_frames"], 2)
+        self.assertEqual(camera["compatible_jpeg_png_headers"], 1)
+        self.assertEqual(camera["unsupported_h264_hevc_frames"], 1)
+        self.assertFalse(camera["simulator_origin_verified"])
+        self.assertFalse(camera["ros2_delivery_independently_verified"])
+        self.assertFalse(report["claims"]["simulator_executed_verified"])
+
+    def test_camera_topic_mismatch_and_inflated_claims_fail(self):
+        receiver = CameraReceiverEvidence(max_frames=1)
+        receiver.observe(sample_png(), "png", 5.0)
+        original = receiver.report(reason="max_frames")
+        for patch in (
+            {"topic": "/elsewhere/compressed"},
+            {"received_frames": 3},
+            {"compatible_jpeg_png_headers": 2},
+            {"termination_reason": "unknown"},
+            {"claims": {**original["claims"], "isaac_sim_origin_verified": True}},
+        ):
+            with self.subTest(patch=patch):
+                report = dict(original)
+                report.update(patch)
+                raw = json.dumps(report).encode()
+                with self.assertRaises(ValueError):
+                    validate_camera_report(raw, expected_topic=manifest()["camera_topic"])
+
+    def test_optional_camera_cli_bundle(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "manifest.json").write_bytes(raw_manifest())
+            (root / "recording.jsonl").write_bytes(trace())
+            receiver = CameraReceiverEvidence(max_frames=1)
+            receiver.observe(sample_png(), "png", 10.0)
+            (root / "camera.json").write_text(json.dumps(receiver.report(reason="max_frames")))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                main([str(root / "manifest.json"), str(root / "recording.jsonl"),
+                      "--camera-report", str(root / "camera.json")])
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["camera_receiver_evidence"]["received_frames"], 1)
+            self.assertFalse(report["camera_receiver_evidence"]["simulator_origin_verified"])
 
     def test_mismatched_asset_fails(self):
         with self.assertRaisesRegex(ValueError, "SHA-256 does not match"):
