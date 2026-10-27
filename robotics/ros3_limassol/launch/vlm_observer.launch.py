@@ -15,6 +15,7 @@ def generate_launch_description():
         DeclareLaunchArgument("timeout_s", default_value="20.0"),
         DeclareLaunchArgument("min_interval_s", default_value="10.0"),
         DeclareLaunchArgument("max_result_age_s", default_value="30.0"),
+        DeclareLaunchArgument("max_status_age_s", default_value="1.0"),
         Node(
             package="ros3_limassol", executable="vlm_observer",
             namespace=["limassol/", robot_id], output="screen",
@@ -32,6 +33,9 @@ def generate_launch_description():
                 ),
                 "max_result_age_s": ParameterValue(
                     LaunchConfiguration("max_result_age_s"), value_type=float,
+                ),
+                "max_status_age_s": ParameterValue(
+                    LaunchConfiguration("max_status_age_s"), value_type=float,
                 ),
             }],
         ),
