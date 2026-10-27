@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path, PurePosixPath
 import re
 
@@ -95,13 +96,100 @@ def sha256_stream(stream):
     return digest.hexdigest()
 
 
-def build_simready_evidence(manifest_bytes, recording_stream, asset_stream=None):
+MAX_CAMERA_REPORT_BYTES = 32768
+
+
+def validate_camera_report(raw: bytes, *, expected_topic: str):
+    """Check bounded format and topic agreement, not the real camera's origin."""
+    if not isinstance(raw, bytes) or len(raw) > MAX_CAMERA_REPORT_BYTES:
+        raise ValueError("camera report must be bytes no longer than 32768")
+    try:
+        report = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object,
+                            parse_constant=_reject_constant)
+    except (UnicodeError, RecursionError) as exc:
+        raise ValueError("invalid camera report UTF-8/JSON") from exc
+    if not isinstance(report, dict):
+        raise ValueError("camera report must be an object")
+    if (type(report.get("camera_receiver_report_version")) is not int
+            or report["camera_receiver_report_version"] != 1
+            or report.get("source") != "ros2-compressed-image-receiver"
+            or report.get("topic") != expected_topic):
+        raise ValueError("wrong camera report version, source, or topic")
+    fields = ("max_frames", "received_frames", "compatible_jpeg_png_headers",
+              "unsupported_h264_hevc_frames", "invalid_or_oversized_frames",
+              "oversized_frames", "received_payload_bytes")
+    counts = {}
+    for name in fields:
+        value = report.get(name)
+        if type(value) is not int or value < 0:
+            raise ValueError("invalid camera report counter: " + name)
+        counts[name] = value
+    limit, received = counts["max_frames"], counts["received_frames"]
+    if not 1 <= limit <= 1000 or received > limit:
+        raise ValueError("camera sample limit or count invalid")
+    if (sum(counts[k] for k in ("compatible_jpeg_png_headers",
+                               "unsupported_h264_hevc_frames",
+                               "invalid_or_oversized_frames")) != received
+            or counts["oversized_frames"] > counts["invalid_or_oversized_frames"]):
+        raise ValueError("camera report counters do not reconcile")
+    codec_counts = report.get("codec_declarations")
+    keys = ("jpeg", "png", "h264", "hevc", "other")
+    if (not isinstance(codec_counts, dict) or set(codec_counts) != set(keys)
+            or any(type(codec_counts[k]) is not int or codec_counts[k] < 0 for k in keys)
+            or sum(codec_counts.values()) != received
+            or counts["compatible_jpeg_png_headers"] > codec_counts["jpeg"] + codec_counts["png"]
+            or counts["unsupported_h264_hevc_frames"] > codec_counts["h264"] + codec_counts["hevc"]):
+        raise ValueError("inconsistent camera codec declarations")
+    reason = report.get("termination_reason")
+    if reason not in ("max_frames", "timeout") or (reason == "max_frames" and received != limit):
+        raise ValueError("invalid camera probe termination")
+    flags = report.get("claims")
+    expected_flags = {
+        "camera_topic_messages_observed": received > 0,
+        "jpeg_png_decoder_success_verified": False,
+        "vlm_model_inference_verified": False,
+        "image_capture_timestamps_verified": False,
+        "isaac_sim_origin_verified": False,
+        "simready_asset_loaded_verified": False,
+        "time_alignment_verified": False,
+        "actuation_authority": False,
+    }
+    if not isinstance(flags, dict) or flags != expected_flags:
+        raise ValueError("unverified camera claims cannot be elevated")
+    first = report.get("first_receiver_monotonic_s")
+    last = report.get("last_receiver_monotonic_s")
+    span = report.get("observed_receiver_span_s")
+    if received == 0:
+        if any(x is not None for x in (first, last, span)):
+            raise ValueError("no-frame camera report must have null time values")
+    else:
+        if (any(type(x) not in (float, int) or not math.isfinite(x) for x in (first, last, span))
+                or first < 0 or last < first or span < 0
+                or not math.isclose(last - first, span, rel_tol=1e-8, abs_tol=1e-6)):
+            raise ValueError("invalid receiver-monotonic observation interval")
+    return {
+        "source": "declared-camera-probe-report",
+        "report_sha256": hashlib.sha256(raw).hexdigest(),
+        "topic": expected_topic,
+        "received_frames": received,
+        "compatible_jpeg_png_headers": counts["compatible_jpeg_png_headers"],
+        "unsupported_h264_hevc_frames": counts["unsupported_h264_hevc_frames"],
+        "invalid_or_oversized_frames": counts["invalid_or_oversized_frames"],
+        "observations_self_consistent": True,
+        "ros2_delivery_independently_verified": False,
+        "simulator_origin_verified": False,
+    }
+
+
+def build_simready_evidence(manifest_bytes, recording_stream, asset_stream=None, *, camera_report_bytes=None):
     """Bind hashes to receiver arrival evidence; never infer simulator execution."""
     manifest = validate_manifest(manifest_bytes)
     observed_asset_hash = sha256_stream(asset_stream) if asset_stream is not None else None
     if observed_asset_hash is not None and observed_asset_hash != manifest["asset_sha256"]:
         raise ValueError("local USD asset SHA-256 does not match declared asset_sha256")
     telemetry = build_evidence(recording_stream, robot_id=manifest["robot_id"])
+    camera = (validate_camera_report(camera_report_bytes, expected_topic=manifest["camera_topic"])
+              if camera_report_bytes is not None else None)
     return {
         "simready_experiment_report_version": 1,
         "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
@@ -119,6 +207,7 @@ def build_simready_evidence(manifest_bytes, recording_stream, asset_stream=None)
             "local_bytes_sha256_verified": observed_asset_hash is not None,
         },
         "receiver_evidence": telemetry,
+        "camera_receiver_evidence": camera,
         "claims": {
             "simulator_executed_verified": False,
             "usd_asset_loaded_in_scene_verified": False,
@@ -143,16 +232,26 @@ def main(argv=None):
     parser.add_argument("manifest", help="experiment manifest v1 JSON")
     parser.add_argument("recording", help="existing ROS3 receiver JSONL recording")
     parser.add_argument("--asset-file", help="optional locally obtained USD file to verify SHA-256")
+    parser.add_argument("--camera-report", help="optional bounded ROS2 camera probe report JSON")
     args = parser.parse_args(argv)
     try:
         with Path(args.manifest).open("rb") as manifest_file:
             manifest_bytes = manifest_file.read(MAX_MANIFEST_BYTES + 1)
+        camera_bytes = None
+        if args.camera_report:
+            with Path(args.camera_report).open("rb") as camera_file:
+                camera_bytes = camera_file.read(MAX_CAMERA_REPORT_BYTES + 1)
         with Path(args.recording).open("rb") as recording_file:
             if args.asset_file:
                 with Path(args.asset_file).open("rb") as asset_file:
-                    output = build_simready_evidence(manifest_bytes, recording_file, asset_file)
+                    output = build_simready_evidence(
+                        manifest_bytes, recording_file, asset_file,
+                        camera_report_bytes=camera_bytes,
+                    )
             else:
-                output = build_simready_evidence(manifest_bytes, recording_file)
+                output = build_simready_evidence(
+                    manifest_bytes, recording_file, camera_report_bytes=camera_bytes,
+                )
         print(json.dumps(output, indent=2, sort_keys=True, allow_nan=False))
     except (OSError, ValueError, TypeError) as exc:
         parser.error(str(exc))
