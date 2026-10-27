@@ -23,7 +23,7 @@ def png_chunk(name, data):
     )
 
 
-def test_png(width=1, height=1):
+def sample_png(width=1, height=1):
     header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
     pixels = b"\x00" + b"\x00\x00\x00" * width
     image = (
@@ -64,7 +64,7 @@ def fake_model():
 
 class VLMDiagnosticsTests(unittest.TestCase):
     def test_actual_vision_request_contains_base64_image_without_tools(self):
-        raw = test_png()
+        raw = sample_png()
         sent = []
         def chat(request, timeout_s):
             sent.append((request, timeout_s))
@@ -87,21 +87,21 @@ class VLMDiagnosticsTests(unittest.TestCase):
         self.assertEqual(report["image_width"], 1)
 
     def test_ros_compressed_transport_format_variants(self):
-        frame = test_png()
+        frame = sample_png()
         self.assertEqual(validate_frame(frame, "rgb8; png compressed rgb8")[1], "png")
         self.assertEqual(validate_frame(sample_jpeg(), "bgr8; jpeg compressed bgr8")[1], "jpeg")
 
     def test_format_size_and_dimension_guards(self):
-        valid = test_png()
+        valid = sample_png()
         cases = [
             (valid, "unknown"),
             (valid, "jpeg"),
             (valid, "png jpeg"),
             (b"", "png"),
             (b"x" * (MAX_IMAGE_BYTES + 1), "png"),
-            (test_png(width=4097), "png"),
-            (test_png(width=4096, height=4096 + 1), "png"),
-            (test_png(width=0), "png"),
+            (sample_png(width=4097), "png"),
+            (sample_png(width=4096, height=4096 + 1), "png"),
+            (sample_png(width=0), "png"),
             (valid[:-12], "png"),
             (b"\xff\xd8\xff\xd9", "jpeg"),
         ]
@@ -110,7 +110,7 @@ class VLMDiagnosticsTests(unittest.TestCase):
                 validate_frame(data, fmt)
 
     def test_invalid_responses_and_inputs_fail_closed(self):
-        image = test_png()
+        image = sample_png()
         outputs = [
             {"done": False, "message": {"content": "{}"}},
             {"done": True, "message": {"tool_calls": [{"name": "drive"}], "content": "{}"}},
@@ -130,7 +130,7 @@ class VLMDiagnosticsTests(unittest.TestCase):
         self.assertEqual(called, [])
 
     def test_cli_file_input_remains_bounded(self):
-        image = test_png()
+        image = sample_png()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "small.png"
             path.write_bytes(image)
