@@ -36,6 +36,7 @@ setup(
             "llm_diagnostics = ros3_limassol.ros_nodes:llm_diagnostics_main",
             "limassol_vlm = ros3_limassol.vlm_diagnostics:main",
             "vlm_observer = ros3_limassol.vlm_ros_nodes:main",
+            "simready_camera_probe = ros3_limassol.camera_probe_ros:main",
         ],
     },
 )
