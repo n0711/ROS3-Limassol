@@ -52,7 +52,7 @@ class ObservationContextTests(unittest.TestCase):
         self.assertEqual(observed["clock_basis"],
                          "one_observer_process_monotonic_callback_arrivals")
         self.assertNotIn("latitude_deg", json.dumps(observed))
-        self.assertEqual(observed["frame_callback_offset_s"], 0.4)
+        self.assertAlmostEqual(observed["frame_callback_offset_s"], 0.4)
 
     def test_missing_or_old_status_is_never_promoted_to_current(self):
         context = ReceiverObservationContext(
