@@ -178,7 +178,79 @@ The four profiles used are `docs/impairment-live-{clean,jitter,loss,burst}.json`
 Each runs at 4 Hz with `stale_after_s` 1.0 and outages of 3 s, 0.8 s and 3 s in
 300 s. The seed is set per run.
 
+### Results: 20 live runs (27 October 2026)
+
+**Setup:** five seeds per profile, 300 s each, on ArduPilot Rover 4.6.3 SITL
+at 4 Hz, with bridge `--stale-after 1.0 --tick 0.1`, over loopback. Each cell
+gives three values: **live · model with live timing · model nominal**. The
+nominal model uses `late_samples: "liveness"`.
+
+| Link profile | Runs | 3 s outages detected | Mean detection, 3 s (s) | 0.8 s outages detected | Mean recovery, 3 s (s) | Unexplained STALE per hour |
+| --- | --- | --- | --- | --- | --- | --- |
+| clean | 5 | 10 · 10 · 10 of 10 | 0.81 · 0.80 · 0.80 | 5 · 5 · 5 of 5 | 0.15 · 0.15 · 0.00 | 0 · 0 · 0 |
+| delay 0.1 s + jitter 0.3 s | 5 | 10 · 10 · 10 of 10 | 1.09 · 1.09 · 1.07 | 5 · 5 · 5 of 5 | 0.38 · 0.38 · 0.24 | 0 · 0 · 0 |
+| 30 % independent loss | 5 | 10 · 10 · 10 of 10 | 0.65 · 0.62 · 0.60 | 5 · 5 · 5 of 5 | 0.22 · 0.22 · 0.05 | 94 · 94 · 79 |
+| bursts, mean 1 s | 5 | 10 · 10 · 10 of 10 | 0.79 · 0.80 · 0.77 | 3 · 3 · 5 of 5 | 0.11 · 0.11 · 0.25 | 142 · 142 · 139 |
+
+**1. The receive path behaves as modelled.** Given the live source's actual
+send times, the model reproduces:
+- every recovery latency, to within 3.5 ms;
+- every false alarm: 39 of 39 under loss and 59 of 59 under bursts;
+- every detected or missed 0.8 s outage.
+
+Detection latencies differ by at most 0.087 s, and on average by 0.005–0.021 s.
+That is less than one 0.1 s bridge tick, whose phase is arbitrary live but
+aligned with t = 0 in the model.
+
+**2. Most of the gap is the source's timing, not the network.** The nominal
+model assumes a perfectly periodic 4 Hz source. ArduPilot's stream actually ran
+at 3.995–3.9996 Hz, with irregular intervals, and drifted up to 0.43 s from the
+model's sample times. Because the live-timed model reproduces every case below,
+each difference comes from source timing:
+- **Recovery is wrong in both directions.** It is 0.00 s nominal against 0.15 s
+  live on a clean link, because nominal samples land exactly on outage ends
+  while live samples arrive anywhere within the 0.25 s period. It is 0.25 s
+  against 0.11 s under bursts, because drift moves bursts relative to outage
+  ends.
+- **Loss false alarms are underestimated:** 79 against 94 per hour. Irregular
+  source intervals lengthen some loss gaps past the 1 s timeout.
+- **Burst detection of 0.8 s outages is overestimated:** 5/5 against 3/5. At
+  4 Hz an 0.8 s outage leaves a gap only just over 1 s, so phase and drift
+  decide whether it is reported.
+
+**3. Reordering is invisible on the MAVLink path.** The bridge numbers samples
+in arrival order, so it rejected nothing. Under the default `reject` policy,
+the nominal model would have rejected 83 reordered samples in the jitter runs.
+
+**Using the model for a real link:** drive it with the source's measured send
+times, or at least model the source's rate offset and interval jitter. A
+perfectly periodic source gives biased estimates of recovery and false alarms.
+
+**Run quality:**
+- Every run started HEALTHY at t = 0, and its recording covered the whole
+  scenario.
+- Fate agreement with the nominal model was 23,975 of 23,999 samples. The rest
+  are boundary cases where a live sample fell on the other side of an outage
+  edge.
+- The relay's mean send error was 0.02–0.62 ms. Its largest single error was
+  64 ms, in a jitter run, and no more than 11 ms in the other profiles.
+- Bridge rejections, CRC errors and length errors were all 0. Each run withheld
+  one sample at start-up (`battery_unknown`). Two burst runs each withheld one
+  more (`battery_stale`). Each matches that run's only silent stretch longer
+  than 5 s (5.01 s and 5.26 s), a single long burst that aged the battery report
+  past `--battery-max-age`.
+
 ## What this does not establish
+
+The live comparison covers:
+- one simulated vehicle on one host, over loopback, through MAVProxy;
+- a 4 Hz stream with a single timeout (1.0 s);
+- five seeds per profile.
+
+False-alarm rates rest on 39 and 59 events and carry the corresponding
+uncertainty. The impairments are applied by a relay, not a radio. Nothing here
+covers signed MAVLink, PX4, or vehicle behaviour.
+
 
 The link model is synthetic. It is not a DDS, UDP, radio or MAVLink
 measurement, does not model bandwidth, queueing or clock drift, and says
