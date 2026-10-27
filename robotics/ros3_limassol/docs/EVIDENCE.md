@@ -35,6 +35,7 @@ Check the command's exit status before retaining or publishing a report.
 | `max_between_observation_gap_s` | Longest gap between consecutive recorded observations, or null for fewer than two |
 | `accepted`, `rejected` | Results from the existing `LinkMonitor` against this file and selected robot ID |
 | `rejection_reasons` | Counts of monitor rejection categories |
+| `late_samples`, `late_accepted` | The monitor's late-sample policy (`reject` by default, or `liveness` via `--late-samples`) and how many late, unseen in-session samples it accepted; see [TELEMETRY.md](TELEMETRY.md#late-samples). Compare reports only with matching policies. |
 | `first_accepted_arrival_s`, `last_accepted_arrival_s` | Recorded receiver-relative times of accepted payloads |
 | `final_state`, `final_age_s` | Monitor state and time since its last accepted arrival at the final observation |
 | `observed_state_change_count` | Total WAITING/HEALTHY/STALE changes observed at recorded times |

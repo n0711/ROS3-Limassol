@@ -83,6 +83,18 @@ class LinkEffectTests(unittest.TestCase):
         self.assertGreater(monitor["rejection_reasons"]["duplicate_or_out_of_order"], 30)
         self.assertEqual(monitor["final_state"], "HEALTHY")
 
+    def test_liveness_policy_accepts_reordered_fresh_samples(self):
+        robots = [{"robot_id": "usv01", "jitter_s": 0.3}]
+        strict = robot(run_scenario(scenario(robots)), "usv01")["monitor"]
+        late_report = run_scenario(scenario(robots, late_samples="liveness"))
+        late = robot(late_report, "usv01")["monitor"]
+        self.assertGreater(strict["rejected"], 30)
+        self.assertEqual((late["rejected"], late["rejection_reasons"]), (0, {}))
+        self.assertEqual(late["accepted"], strict["accepted"] + strict["rejected"])
+        self.assertEqual(late_report["late_samples"], "liveness")
+        with self.assertRaises(ValueError):
+            scenario(robots, late_samples="accept")
+
     def test_restart_starts_a_new_accepted_session(self):
         clean = robot(run_scenario(scenario(
             [{"robot_id": "usv01", "restarts": [10, 20]}])), "usv01")
