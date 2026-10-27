@@ -235,6 +235,13 @@ Each robot uses `/limassol/<robot_id>/`. Startup parameters are read once; resta
 the nodes to change them. Steady-clock timers and receiver monotonic time drive
 liveness. No hard scheduling bound is established.
 
+To monitor several robots, start one launch per robot in separate terminals, for
+example `robot_id:=usv01` and `robot_id:=usv02`. Each gets its own namespace,
+publisher and monitor. A DDS graph test checks that an outage on one robot leaves
+the other `HEALTHY`. It also checks that a monitor expecting another robot rejects
+the samples as `unexpected_robot` and never reports `HEALTHY`. That test runs in
+the Humble and Jazzy CI jobs; it covers two robots on one host, not a fleet.
+
 ## Record a live ROS stream
 
 This section records messages delivered to the recorder's subscriber; it cannot
