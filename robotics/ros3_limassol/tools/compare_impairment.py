@@ -77,15 +77,19 @@ def live_events(recording_text, robot_id, stale_after_s, t0_wall_ns, duration_s)
     shift = (t0_wall_ns - origin_ns) / 1e9
     events = []
     state_at_t0 = "WAITING"
+    covered = None
     for event in run_replay(io.StringIO(recording_text), robot_id, stale_after_s):
-        if event.get("event") == "summary":
-            continue
         t = event["time_s"] - shift
+        if event.get("event") == "summary":
+            covered = round(t, 3)   # the recording's last observation, on scenario time
+            continue
         if t < 0:
             state_at_t0 = event["state"]
         elif t <= duration_s:
             events.append({**event, "time_s": round(t, 9)})
-    return events, state_at_t0, {"samples": aligned, "spread_ms": round(spread_ns / 1e6, 3)}
+    return events, state_at_t0, {"samples": aligned, "spread_ms": round(spread_ns / 1e6, 3),
+                                 "recording_covers_until_s": covered,
+                                 "covers_scenario": covered is not None and covered >= duration_s}
 
 
 def virtual_outcomes(model, scenario, count):
@@ -175,7 +179,8 @@ def markdown(report):
         f"live state at t=0: {report['live_state_at_t0']}",
         f"Fate agreement: {report['fate_agreement']['samples'] - report['fate_agreement']['differ']}"
         f"/{report['fate_agreement']['samples']} samples; alignment spread "
-        f"{report['alignment']['spread_ms']} ms",
+        f"{report['alignment']['spread_ms']} ms; recording covers the scenario: "
+        f"{report['alignment']['covers_scenario']}",
         f"Virtual columns use late_samples={report['virtual_policy']!r}; "
         f"virtual 'liveness' (the bridge path's analogue) is in brackets.",
         "",

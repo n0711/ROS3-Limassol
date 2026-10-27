@@ -235,6 +235,7 @@ class CompareTests(unittest.TestCase):
         report = self.run_synthetic(sc)
         self.assertEqual(report["fate_agreement"]["differ"], 0)
         self.assertEqual(report["live_state_at_t0"], "HEALTHY")
+        self.assertTrue(report["alignment"]["covers_scenario"])
         live, virtual = report["live"], report["virtual"]
         for key in ("detected", "missed", "already_stale", "unexplained_stale"):
             self.assertEqual(live[key], virtual[key], key)
