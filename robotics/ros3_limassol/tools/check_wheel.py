@@ -22,7 +22,8 @@ def main():
                        "ros3_limassol/live_recorder.py", "/launch/record_telemetry.launch.py",
                        "/launch/usv_demo.launch.py", "/launch/llm_diagnostics.launch.py",
                        "/launch/vlm_observer.launch.py", "/package.xml", "/LICENSE",
-                       "/NOTICE", "/resource_index/packages/ros3_limassol"):
+                       "/NOTICE", "/resource_index/packages/ros3_limassol",
+                       "ros3_limassol/impairment.py"):
             if not any(member.endswith(suffix) for member in members):
                 raise RuntimeError(f"wheel is missing {suffix}")
     with tempfile.TemporaryDirectory() as directory:
