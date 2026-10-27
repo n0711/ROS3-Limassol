@@ -87,6 +87,16 @@ protocol versions.
   sample; the two are not captured at the same instant.
 - `HEALTHY` remains receiver arrival recency, as elsewhere in ROS3-Limassol. It
   says nothing about vehicle safety or the autopilot's own link-loss failsafe.
+- Source identity is not authenticated. Frames are filtered only by MAVLink
+  system/component ID, not by sender address. If `--listen` binds beyond
+  loopback (for example `0.0.0.0`), any host that can reach the port can send
+  unsigned frames with the configured system ID and hold the monitor in
+  `HEALTHY`. Keep the default `127.0.0.1` bind, or restrict the port with a
+  firewall, when the network is not trusted.
+- Unsupported messages cannot be checksum-verified, because their `CRC_EXTRA`
+  is unknown, so they are skipped by their declared length. A stray `0xFE`/`0xFD`
+  byte in line noise followed by a plausible header can therefore swallow a
+  valid frame that follows it; that frame is lost, not misread.
 - MAVLink 2 signing, serial ports, TCP, and multiple vehicles per bridge are not
   supported. Run one bridge per system ID.
 - Validated in automated tests and a local UDP run with a pymavlink sender. No
