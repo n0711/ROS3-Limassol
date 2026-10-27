@@ -35,7 +35,7 @@ this repository.
 ```sh
 # 2a. Bridge: receive-only, records, stops after 180 s
 python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14551 --system-id 1 \
-    --record sitl-stationary.jsonl --duration 180 > bridge-stationary.out
+    --stale-after 1.0 --record sitl-stationary.jsonl --duration 180 > bridge-stationary.out
 
 # 2b. Relay: outages at 30–35 s and 70–72 s after the first datagram
 python tools/udp_outage_relay.py --listen 127.0.0.1:14550 --forward 127.0.0.1:14551 \
@@ -54,6 +54,12 @@ unaffected. Without a terminal, also pass `--mavproxy-args="--non-interactive"`.
 The relay's windows count from SITL's first datagram, while the bridge's
 `--duration` counts from bridge start. The extra 60 s leaves room for SITL to
 boot; if it takes longer, increase it so the bridge outlives the relay.
+
+The bridge command passes `--stale-after 1.0` explicitly. Under the bridge's
+3.0 s default, the 2 s outage would not be reported. A 1.0 s threshold suits
+MAVProxy's 4 Hz stream, and both outage windows start after ArduPilot's 1 Hz
+boot phase. The replay, evidence and comparison commands below use their 1.0 s
+default, so they match.
 
 If the bridge summary shows `battery_unknown` or no accepted samples,
 `GLOBAL_POSITION_INT` or `SYS_STATUS` is not streaming. In MAVProxy run

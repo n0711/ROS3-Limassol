@@ -60,7 +60,9 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jso
 
 `GLOBAL_POSITION_INT` and `SYS_STATUS` from one system ID are mapped explicitly to
 telemetry schema v1, so the recording replays and exports evidence like any
-other. The bridge never sends MAVLink; the sender must already stream to it.
+other; pass the bridge's `--stale-after` (default 3 s) to `replay` and
+`evidence` so they match. The bridge never sends MAVLink; the sender must
+already stream to it.
 See the [MAVLink mapping and limits](docs/MAVLINK.md).
 
 ## Link-impairment experiments
