@@ -107,9 +107,13 @@ ros2 launch ros3_limassol vlm_observer.launch.py model:=gemma3:4b camera_topic:=
 ```
 
 View output at `/limassol/usv01/vlm_diagnostics`. The input must be an existing
-compressed JPEG/PNG camera topic. Requests are local, bounded, rate-limited,
-and read-only; they do not establish image interpretation accuracy or
-navigation authority. See [VLM instructions](docs/VLM.md).
+compressed JPEG/PNG camera topic. The observer can also receive
+`/limassol/usv01/link_status`, embedding a **bounded receiver-delivery
+snapshot** when that status was delivered recently (default
+`max_status_age_s:=1.0`). It explicitly reports missing/old status as
+unavailable; it does not synchronize camera capture and telemetry clocks.
+Requests are local, bounded, rate-limited, and read-only; they do not
+establish image interpretation accuracy or navigation authority. See [VLM instructions](docs/VLM.md).
 
 ## ROS 2 Humble on Ubuntu 22.04
 
