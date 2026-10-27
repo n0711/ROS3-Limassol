@@ -51,6 +51,9 @@ multimodal fusion.
 
 ## Next steps
 
+The working plan, with owners and the decisions waiting on the maintainer, is
+tracked in [GitHub issue #36](https://github.com/n0711/ROS3-Limassol/issues/36).
+
 1. Retain recorder CI evidence, then collect a shareable ROS recording on a
    workstation with the intended publisher. Document the receiver configuration,
    independently known outage times and unrecordable-payload count.

@@ -14,6 +14,22 @@ from the **repository root** (the directory containing `robotics/`). Use a
 separate terminal for each concurrently running ROS process, and source the
 same ROS distribution and workspace in each terminal.
 
+**Contents**
+
+- **Core, no ROS needed:** [Standalone Python](#standalone-python) ·
+  [Offline evidence report](#offline-evidence-report) ·
+  [MAVLink input](#receive-only-mavlink-input-experimental) ·
+  [Link-impairment experiments](#link-impairment-experiments)
+- **ROS 2:** [Humble](#ros-2-humble-on-ubuntu-2204) ·
+  [Jazzy](#ros-2-jazzy-on-ubuntu-2404) ·
+  [Record a live ROS stream](#record-a-live-ros-stream)
+- **Optional, read-only extensions:** [Offline analytics](#optional-read-only-offline-analytics) ·
+  [LLM diagnostics](#local-llm-diagnostics-optional-read-only) ·
+  [VLM camera observer](#local-vision-language-camera-observer-optional) ·
+  [SimReady provenance](#optional-nvidia-simready-provenance-experiment) ·
+  [Camera format probe](#read-only-ros-2-camera-format-probe-optional)
+- [Tests and packaging](#tests-and-packaging) · [All documentation](docs/README.md)
+
 ## Standalone Python
 
 From this directory, with Python 3.10 or newer:
@@ -220,6 +236,13 @@ liveness instead of being rejected; the default is `reject`. See
 Each robot uses `/limassol/<robot_id>/`. Startup parameters are read once; restart
 the nodes to change them. Steady-clock timers and receiver monotonic time drive
 liveness. No hard scheduling bound is established.
+
+To monitor several robots, start one launch per robot in separate terminals, for
+example `robot_id:=usv01` and `robot_id:=usv02`. Each gets its own namespace,
+publisher and monitor. A DDS graph test checks that an outage on one robot leaves
+the other `HEALTHY`. It also checks that a monitor expecting another robot rejects
+the samples as `unexpected_robot` and never reports `HEALTHY`. That test runs in
+the Humble and Jazzy CI jobs; it covers two robots on one host, not a fleet.
 
 ## Record a live ROS stream
 

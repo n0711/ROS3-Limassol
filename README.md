@@ -2,31 +2,32 @@
 
 **Telemetry arrival monitoring for robots with intermittent connections.**
 
-ROS3-Limassol is an experimental OpenPELAOS research prototype that monitors whether telemetry messages are arriving at a receiver. It detects communication silence and recovery, and supports reproducible offline recording and replay.
+ROS3-Limassol watches whether telemetry is still arriving at a receiver. It
+reports when a link goes silent and when it recovers, records what the receiver
+observed, and replays those recordings offline to the same result.
 
-**It is not ROS 3, an official ROS distribution, or a replacement for ROS 2.** Its ROS 2 integration is optional.
+It is an experimental OpenPELAOS research prototype. **It is not ROS 3, an
+official ROS distribution, or a replacement for ROS 2.** ROS 2 integration is
+optional.
 
-## What does it do?
+## What it does
 
-A robot sends telemetry to a receiver. ROS3-Limassol validates incoming messages and tracks three states:
+A robot sends telemetry; the receiver validates each message and reports one of
+three states:
 
 | State | Meaning |
 | --- | --- |
 | `WAITING` | No valid telemetry has arrived yet. |
-| `HEALTHY` | Valid telemetry has arrived recently. |
-| `STALE` | No valid telemetry has arrived within the configured timeout. |
+| `HEALTHY` | Valid telemetry has arrived within the timeout. |
+| `STALE` | No valid telemetry has arrived within the timeout. |
 
-**Important:** `HEALTHY` describes *receiver arrival recency*, not vehicle safety, sensor freshness, navigation accuracy, network latency, or delivery reliability. The prototype does not send vehicle commands.
+**`HEALTHY` means only that valid telemetry arrived recently.** It says nothing
+about vehicle safety, sensor freshness, navigation accuracy, network latency or
+delivery reliability. ROS3-Limassol never sends commands to a vehicle.
 
-## Choose a starting point
+## Quick start (no ROS needed)
 
-- **Just want to understand it?** Run the Python demo below; it requires no ROS installation.
-- **Already use ROS 2?** Follow the [ROS package guide](robotics/ros3_limassol/README.md) for Humble/Jazzy setup and topic recording.
-- **Interested in Rust?** See the [experimental Rust core](robotics/ros3_core/README.md); it does not connect to ROS 2 by itself.
-
-## Quick start (no ROS required)
-
-Requires Python 3.10+; the core uses only the standard library.
+Requires Python 3.10 or newer; the core uses only the standard library.
 
 ```bash
 git clone https://github.com/n0711/ROS3-Limassol.git
@@ -34,9 +35,8 @@ cd ROS3-Limassol/robotics/ros3_limassol
 python -m ros3_limassol.demo
 ```
 
-On Linux, use `python3` if necessary; on Windows, `py -3` may replace `python`. The demo uses virtual time and finishes immediately.
-
-Example output:
+Use `python3` on some Linux systems and `py -3` on Windows. The demo runs on
+virtual time and finishes immediately:
 
 ```text
 t= 0.0s  WAITING
@@ -46,9 +46,41 @@ t= 5.0s  HEALTHY
 Accepted: 51; rejected: 0
 ```
 
-## Record, replay, and export evidence
+The simulated link drops out from 2 s to 5 s. The last message before the
+dropout arrives at 1.9 s, so with the 1 s timeout the monitor reports `STALE` at
+2.9 s, and `HEALTHY` again when messages resume at 5 s.
 
-Run these commands from `robotics/ros3_limassol`:
+## Where to go next
+
+| I want to… | Start here |
+| --- | --- |
+| Record, replay and export evidence | [Below](#record-replay-and-export-evidence) |
+| Use it with ROS 2 Humble or Jazzy | [ROS package guide](robotics/ros3_limassol/README.md) |
+| Watch a MAVLink autopilot without ROS | [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md) |
+| Test a timeout against delay, jitter and loss | [Link-impairment experiments](robotics/ros3_limassol/docs/IMPAIRMENT.md) |
+| Reproduce the ArduPilot simulation check | [SITL runbook](robotics/ros3_limassol/docs/SITL.md) |
+| Know what has and has not been validated | [Validation record](robotics/ros3_limassol/docs/VALIDATION.md) |
+| Understand the design | [Architecture](robotics/ros3_limassol/docs/ARCHITECTURE.md) |
+| Find any other document | [Documentation map](robotics/ros3_limassol/docs/README.md) |
+
+## Status at a glance
+
+| Part | What has been checked | Not established |
+| --- | --- | --- |
+| Monitor, telemetry validation, recording, replay, evidence (Python) | Unit tests in CI on Ubuntu (Python 3.10, 3.12) and Windows (3.12) | Timing over a real network |
+| ROS 2 adapter: simulator, monitor, recorder | DDS graph tests in the Humble and Jazzy CI jobs | Multi-host or field DDS |
+| Receive-only MAVLink bridge | Independently encoded frames; ArduPilot Rover 4.6.3 SITL on one host with scripted outages | PX4, radio links, companion computers, signed MAVLink |
+| Link-impairment experiments | A seeded, virtual-time model scored against declared outages | Any real network |
+| Rust core | Format, lint and tests in CI | Use by the ROS 2 nodes |
+| LLM, VLM, SimReady and multimodal extensions | Mocked models and synthetic inputs | Model accuracy, real cameras, synchronised sensors |
+
+**There is no physical-robot, field or vehicle-safety evidence.** The
+[validation record](robotics/ros3_limassol/docs/VALIDATION.md) lists each check,
+newest first, with CI run links and what each result does not establish.
+
+## Record, replay and export evidence
+
+From `robotics/ros3_limassol`:
 
 ```bash
 python -m ros3_limassol.demo --record run.jsonl
@@ -56,140 +88,88 @@ python -m ros3_limassol.replay run.jsonl --json
 python -m ros3_limassol.evidence run.jsonl --robot-id usv01 > evidence.json
 ```
 
-Recordings include receiver observation ticks during communication silence. The exporter summarizes accepted/rejected messages and stale/recovery transitions with a SHA-256 recording fingerprint; it does not export raw telemetry. Recording refuses to overwrite an existing file.
+- **Recordings** hold the receiver's observations, including periodic ticks
+  during silence, so replay reaches the same states at the same times. Recording
+  refuses to overwrite a file.
+- **The evidence report** summarises accepted and rejected messages and every
+  stale/recovery transition, with a SHA-256 fingerprint of the recording. It
+  never exports raw telemetry.
+- **Timeout:** replay and evidence use 1.0 s by default. Pass `--stale-after`
+  when a recording was made with a different timeout.
 
-See [recording format](robotics/ros3_limassol/docs/RECORDING.md) and [evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
+See the [recording format](robotics/ros3_limassol/docs/RECORDING.md) and the
+[evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
 
-## Receive-only MAVLink input (experimental)
+## Other ways in
 
-Observe an autopilot or MAVLink router that streams to UDP, with no ROS and no
-pymavlink. From `robotics/ros3_limassol`:
+### ROS 2 (optional)
+
+Supported: **Humble on Ubuntu 22.04** and **Jazzy on Ubuntu 24.04**. Build and
+source the package as the [ROS package guide](robotics/ros3_limassol/README.md)
+describes, then:
+
+```bash
+ros2 launch ros3_limassol usv_demo.launch.py                              # simulated USV and monitor
+ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl  # record a live stream
+```
+
+Stop recording with Ctrl+C. The output path is relative to that terminal's
+working directory; use an absolute path if you will replay elsewhere.
+
+### MAVLink autopilots (experimental, no ROS)
 
 ```bash
 python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jsonl
 ```
 
-`GLOBAL_POSITION_INT` and `SYS_STATUS` are mapped explicitly onto the telemetry
-schema, so the recording replays and exports evidence as above; pass the bridge's
-`--stale-after` (default 3 s) to `replay` and `evidence` so they match. The bridge
-**never sends MAVLink** — no heartbeats, stream requests or commands. Tested with
-independently encoded frames, a local UDP sender and ArduPilot Rover SITL over
-loopback with scripted outages ([validation](robotics/ros3_limassol/docs/VALIDATION.md)).
-No PX4 SITL, radio or physical link has been verified. See the
-[MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md).
+- **Input:** the bridge maps `GLOBAL_POSITION_INT` and `SYS_STATUS` from one
+  MAVLink system onto the telemetry schema, so its recordings replay like any
+  other.
+- **Receive-only:** it **never sends MAVLink**: no heartbeats, stream requests
+  or commands. A ground station or router must already stream to it.
+- **Timeout:** the bridge's `--stale-after` defaults to 3 s, three intervals of
+  ArduPilot's default 1 Hz position stream. Choose it for your vehicle's
+  position rate, and pass the same value to replay and evidence, whose default
+  is 1 s.
 
-## Offline anomaly and vision evidence (experimental)
+The [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md) explains the
+mapping, the timeout and the limits. The
+[SITL runbook](robotics/ros3_limassol/docs/SITL.md) reproduces the ArduPilot
+check.
 
-The read-only, standard-library `ros3_limassol.analysis` tool extracts
-aggregate receiver-observation features and fits an exploratory median/MAD
-baseline from at least five distinct training recordings. Optional
-`ros3_limassol.multimodal` bundles those features with independent VERA-MOT
-tracker summaries and declared external-VLM annotations. No real VLM runs in
-this repository; synchronized clocks, GNSS-denied localization, navigation
-and hardware validation remain unverified.
-
-See the [multimodal research guide](robotics/ros3_limassol/docs/MULTIMODAL.md).
-
-## Optional local LLM diagnostics (experimental)
-
-ROS3 now includes an **actual local Ollama language-model inference adapter**
-for explaining receiver-arrival link status. It is read-only and independent of
-the core monitor. The LLM receives bounded, validated status/evidence fields,
-**not raw telemetry**, and never controls a robot.
-
-With a local Ollama server and a locally installed model (e.g. `llama3.2`),
-run from `robotics/ros3_limassol/`:
+### Link-impairment experiments
 
 ```bash
-python -m ros3_limassol.llm_diagnostics --evidence evidence.json --model llama3.2
+python -m ros3_limassol.impairment docs/impairment-example.json
 ```
 
-For ROS 2 use `ros2 launch ros3_limassol llm_diagnostics.launch.py model:=llama3.2`
-after building and sourcing the package. The model must already be running;
-CI uses a mock, not downloaded model weights. Output is **unverified diagnostic
-text**, not autonomy, VLM/VLA, or field validation. See the
-[LLM integration guide](robotics/ros3_limassol/docs/LLM.md).
+This runs the monitor against a seeded model of delay, jitter, independent and
+bursty loss, duplication, outages and publisher restarts, for one or more
+robots. It scores the monitor against the declared outages: detection and
+recovery latency, missed outages and false alarms. The model is synthetic and
+runs on virtual time. [IMPAIRMENT.md](robotics/ros3_limassol/docs/IMPAIRMENT.md)
+explains how to read the results and choose a timeout.
 
-## Local VLM camera inspection (experimental)
+### Rust core (experimental)
 
-ROS3 now has an **opt-in camera-to-vision-model path**: a ROS 2
-`sensor_msgs/msg/CompressedImage` subscriber samples bounded JPEG/PNG frames,
-uses a separately installed **local** Ollama vision model, and publishes a
-read-only `vlm_diagnostics` topic. It does **not** require ROS 2 to run a
-single-file image inspection:
+The Rust core provides validation, monitoring and replay, with optional
+HMAC-SHA256 signed envelopes. It does not connect to ROS 2, and the Python ROS
+adapter does not accept its signed envelopes. See the
+[Rust core guide](robotics/ros3_core/README.md).
 
-```bash
-# From robotics/ros3_limassol; requires a local vision model in Ollama
-python -m ros3_limassol.vlm_diagnostics --image frame.jpg --model gemma3:4b
-```
+## Experimental extensions
 
-The optional ROS launch is `vlm_observer.launch.py`. It can attach the
-latest recently delivered `link_status` snapshot to each sampled image
-description, with receiver-side callback timing and explicit unverified
-synchronization flags. Missing/old status is reported as unavailable.
-It never sends vehicle commands or connects its descriptions to navigation. Tests use a fake model;
-real-world visual accuracy is **not validated**. See the
-[VLM setup and boundaries](robotics/ros3_limassol/docs/VLM.md).
+These are optional and read-only. None of them can command a vehicle or change
+`HEALTHY` and `STALE`.
 
-## What is implemented?
+| Extension | What it does | Limits | Guide |
+| --- | --- | --- | --- |
+| LLM diagnostics | Asks a local Ollama model to explain link status from bounded, validated status and evidence fields | Never sees raw telemetry; output is unverified text; CI uses a mock | [LLM.md](robotics/ros3_limassol/docs/LLM.md) |
+| VLM camera inspection | Describes sampled JPEG/PNG frames with a local Ollama vision model, from a file or a ROS 2 `CompressedImage` topic | Accuracy not validated; tests use a fake model | [VLM.md](robotics/ros3_limassol/docs/VLM.md) |
+| SimReady provenance | Associates a version-pinned OpenUSD asset, and optionally a camera-format probe report, with a recording | Does not run Isaac Sim or prove the asset was loaded | [SIMREADY.md](robotics/ros3_limassol/docs/SIMREADY.md) |
+| Offline analytics and multimodal bundles | Extracts aggregate observation features, fits an exploratory baseline, and bundles them with external tracker and VLM summaries | Exploratory; no synchronised clocks, localisation or hardware validation | [MULTIMODAL.md](robotics/ros3_limassol/docs/MULTIMODAL.md) |
 
-- Bounded, versioned JSON telemetry validation with explicit units.
-- Duplicate, out-of-order, and retired-session rejection.
-- Arrival-based `WAITING`, `HEALTHY`, and `STALE` states.
-- Deterministic simulated communication blackout and recovery.
-- Seeded multi-robot link-impairment experiments scored against declared outages.
-- Streaming JSONL recording and replay.
-- Optional ROS 2 Humble/Jazzy simulator publisher and link observer, plus a separate receive-only recorder.
-- Experimental receive-only MAVLink v1/v2 UDP adapter (standard library only).
-- Experimental Rust validation, monitoring, and replay tools.
-
-The Rust core has optional HMAC-SHA256 envelopes; the Python ROS adapter does **not** support those signed envelopes yet.
-
-## ROS 2 integration (optional)
-
-Supported targets: **ROS 2 Humble / Ubuntu 22.04** and **ROS 2 Jazzy / Ubuntu 24.04**.
-
-Follow the [ROS package guide](robotics/ros3_limassol/README.md) to build and source your environment. To record an existing telemetry stream, run in a sourced terminal:
-
-```bash
-ros2 launch ros3_limassol record_telemetry.launch.py output_path:=run.jsonl
-```
-
-Stop with Ctrl+C. The output path is relative to that terminal's working directory; an absolute path is safer when replaying elsewhere.
-
-## Optional SimReady/Isaac Sim experiment provenance (experimental)
-
-ROS3 now has a **read-only SimReady experiment manifest validator** that can
-associate one version-pinned OpenUSD asset with an existing receiver recording.
-It does not download assets, run Isaac Sim, bridge telemetry, align camera
-timestamps, run VERA-MOT or verify VLM output. Even a matching local asset
-checksum is not proof the asset was loaded into a simulator.
-
-See the [SimReady study protocol](robotics/ros3_limassol/docs/SIMREADY.md)
-and run from the package directory:
-
-```bash
-python -m ros3_limassol.simready_evidence simready-manifest.json run.jsonl --asset-file /path/to/asset.usd
-```
-
-## SimReady camera bridge compatibility check
-
-The optional, **read-only** `simready_camera_probe` ROS 2 executable
-counts delivered `sensor_msgs/msg/CompressedImage` formats and JPEG/PNG
-header compatibility without retaining image data. NVIDIA Isaac Sim 6.2 can
-publish H.264/HEVC CompressedImage, which **cannot be used directly** by
-ROS3's JPEG/PNG VLM observer. Convert a raw ROS image to JPEG/PNG using an
-independently installed ROS 2 image transport plugin and verify the topic
-before any local VLM run.
-
-A camera probe report can be bound to the SimReady manifest and independently
-captured telemetry recording using `simready_evidence --camera-report`.
-It is a **caller-supplied** report, not independent proof of simulator origin,
-asset loading, camera synchronization, or physical validation.
-
-See the [camera bridge and verification guide](robotics/ros3_limassol/docs/SIMREADY.md).
-
-## Testing and validation
+## Run the tests
 
 From `robotics/ros3_limassol`:
 
@@ -197,19 +177,31 @@ From `robotics/ros3_limassol`:
 python -m unittest discover -s tests -v
 ```
 
-Automated checks cover synthetic scenarios, including silence and recovery. **Physical robot and field validation remain pending.** Do not interpret these tests as measured network performance or vehicle safety evidence.
+- **ROS graph tests** are skipped without `rclpy`; the Humble and Jazzy CI jobs
+  run them.
+- **What the tests show:** all of them use synthetic inputs, so they are not
+  network measurements or vehicle-safety evidence.
+- **CI:** see the [GitHub Actions workflows](.github/workflows/) and the
+  [CI notes](docs/CI.md), which also cover an optional GitLab mirror pipeline.
 
-See [validation](robotics/ros3_limassol/docs/VALIDATION.md), [CI details](docs/CI.md), and [GitHub Actions](.github/workflows/). An optional GitLab mirror pipeline is also included.
+## Repository layout
 
-## Documentation
+```text
+robotics/ros3_limassol/    Python package, ROS 2 nodes and launch files, docs/, tools/, tests/
+robotics/ros3_core/        Experimental Rust core
+docs/papers/               Manuscripts and arXiv preparation
+docs/                      CI notes and LearnTwin documentation
+backend/ frontend/ learntwin/   LearnTwin, the original classroom app (separate, MIT)
+```
 
-- [ROS package setup](robotics/ros3_limassol/README.md)
-- [Architecture](robotics/ros3_limassol/docs/ARCHITECTURE.md)
-- [Telemetry contract](robotics/ros3_limassol/docs/TELEMETRY.md)
-- [Rust core](robotics/ros3_core/README.md)
-- [Roadmap](robotics/ros3_limassol/docs/ROADMAP.md)
-- [Contributing](CONTRIBUTING.md)
-- [Original LearnTwin components](LEARNTWIN_README.md) — retained in this repository, separate from the ROS3 prototype.
+LearnTwin is unrelated to the monitor. See
+[LEARNTWIN_README.md](LEARNTWIN_README.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Coding agents should also read
+[CLAUDE.md](CLAUDE.md), which sets the boundaries, required checks and current
+priorities. Work is planned in GitHub issues.
 
 ## Research and credits
 
@@ -218,7 +210,10 @@ See [validation](robotics/ros3_limassol/docs/VALIDATION.md), [CI details](docs/C
 
 [Research overview](https://n0711.github.io/pelaos-tech/ros3-limassol/) · [Preliminary ResearchGate report](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.pdf) · [Original paper](docs/papers/ROS3_Limassol_OpenPELAOS_A4.pdf) · [Manuscript source](docs/papers/ROS3_Limassol_ResearchGate_No_Military_Use.tex) · [arXiv preparation](docs/papers/ARXIV.md)
 
-The ResearchGate report (25 October 2026) is preliminary and **not peer reviewed**. It describes an earlier experimental version; later implementations include recording/replay, ROS recording, and Humble compatibility.
+The ResearchGate report (25 October 2026) is preliminary and **not peer
+reviewed**. It describes an earlier experimental version. Later work added
+recording and replay, ROS recording, Humble support, the MAVLink bridge and the
+impairment experiments.
 
 ## Licences
 
