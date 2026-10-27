@@ -34,6 +34,21 @@ perception baseline, and quantify camera/telemetry clock alignment before
 attempting multimodal research claims. The existing telemetry monitor remains
 independent of the VLM.
 
+## Receiver-side camera/telemetry co-observation
+
+An optional bounded status snapshot can accompany each sampled VLM
+image diagnostic, using a shared observer-process monotonic callback
+clock. The record reports observer-session/sample identity, last
+status-delivery age and explicit no-synchronization flags. Expired status
+is omitted, and no image or telemetry content is stored by this helper.
+This is a **temporal co-observation**, not sensor exposure timing, ground
+truth, physical robot identity or VERA-MOT track association.
+
+Next: independently measure camera capture delay, status publication
+delay and the clock-offset/error bounds across recording and camera
+machines, then design a versioned alignment contract before asserting
+multimodal fusion.
+
 ## Next steps
 
 1. Retain recorder CI evidence, then collect a shareable ROS recording on a
