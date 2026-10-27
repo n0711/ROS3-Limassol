@@ -50,7 +50,7 @@ class SimReadyCameraProbeNode(Node):
     def _receive(self, message):
         if self.finished:
             return
-        self.receiver.observe(message.data, message.format, time.monotonic())
+        self.receiver.observe(memoryview(message.data), message.format, time.monotonic())
         if self.receiver.received >= self.receiver.max_frames:
             self._finish("max_frames")
 
