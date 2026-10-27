@@ -1,5 +1,21 @@
 # Validation record
 
+## Seeded link-impairment experiments (27 October 2026)
+
+`impairment.py` adds a virtual-time, seeded link model (delay, jitter,
+independent and Gilbert–Elliott burst loss, duplication, declared outages,
+publisher restarts) for several robots, scored against the declared outages.
+Its monitor counts come from `run_replay` over the same observations it can
+write as recordings. Fourteen tests cover exact clean-link latencies, delay,
+missed short outages, outages beginning while already STALE, burst-induced
+unexplained STALE episodes, duplicate and jitter rejections, restart sessions,
+per-robot independence, common random numbers, recording/evidence agreement,
+the documented example and strict scenario validation. Local runs pass on
+Python 3.11 and 3.13 under unittest and pytest.
+
+The threshold sweep in [IMPAIRMENT.md](IMPAIRMENT.md) is a synthetic result.
+It does not measure a network, DDS, radio or vehicle link.
+
 ## Receiver-only context alongside local VLM (27 October 2026)
 
 The optional camera node now retains **one** recently delivered

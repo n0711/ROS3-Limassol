@@ -54,8 +54,11 @@ multimodal fusion.
 1. Retain recorder CI evidence, then collect a shareable ROS recording on a
    workstation with the intended publisher. Document the receiver configuration,
    independently known outage times and unrecordable-payload count.
-2. Exercise multiple robot namespaces and controlled delay, jitter, loss and
-   restarts. Define timing ground truth before comparing repeated runs.
+2. ~~Exercise multiple robot namespaces and controlled delay, jitter, loss and
+   restarts. Define timing ground truth before comparing repeated runs.~~
+   Synthetic, seeded version added ([IMPAIRMENT.md](IMPAIRMENT.md)). Open
+   question it raised: whether late in-session samples should refresh
+   liveness instead of counting as rejected under jitter.
 3. Add a receive-only MAVLink adapter with explicit message-to-schema mappings.
 4. Evaluate a companion computer and a physical marine-robotics telemetry link.
 

@@ -1,0 +1,22 @@
+{
+  "seed": 7,
+  "duration_s": 60,
+  "tick_s": 0.1,
+  "stale_after_s": 1.0,
+  "robots": [
+    {
+      "robot_id": "usv01",
+      "outages": [[10, 13], [30, 30.5]]
+    },
+    {
+      "robot_id": "usv02",
+      "delay_s": 0.1,
+      "jitter_s": 0.3,
+      "loss": 0.05,
+      "duplicate": 0.02,
+      "burst_loss": {"enter": 0.02, "exit": 0.2},
+      "outages": [[20, 24]],
+      "restarts": [40]
+    }
+  ]
+}

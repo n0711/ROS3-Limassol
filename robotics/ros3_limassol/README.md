@@ -50,6 +50,20 @@ the exact input bytes; it does not authenticate the recording or establish its
 provenance. A failed read emits no JSON report. See the
 [evidence specification](docs/EVIDENCE.md) for interpretation and limitations.
 
+## Link-impairment experiments
+
+Score the monitor against declared outages under seeded delay, jitter,
+independent and bursty loss, duplication and publisher restarts, for several
+robots at once, **without ROS**:
+
+```sh
+python -m ros3_limassol.impairment docs/impairment-example.json --record-dir runs/example
+```
+
+The report gives detection and recovery latency per outage, missed outages and
+STALE episodes no outage explains; recordings replay with the standard tools.
+See the [impairment guide](docs/IMPAIRMENT.md), including a threshold sweep.
+
 ## Optional read-only offline analytics
 
 ```sh
