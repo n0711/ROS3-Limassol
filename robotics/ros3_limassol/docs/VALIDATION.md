@@ -49,6 +49,12 @@ the opt-in policy, which was not used.
 - other stream rates or timeouts
 - signed MAVLink, or PX4
 
+For reproducibility, archive the full per-run scenario, relay log, bridge
+recording, JSON comparison report and exact tool versions. This pull request
+contains the scenario profiles and aggregate results, not the 20 sets of raw
+logs. The comparison script now verifies that the logged relay parameters
+match the supplied scenario and that sample indices are continuous.
+
 Five seeds per profile leave false-alarm rates with sampling uncertainty.
 This is simulation evidence, not field validation.
 
