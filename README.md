@@ -60,6 +60,21 @@ Recordings include receiver observation ticks during communication silence. The 
 
 See [recording format](robotics/ros3_limassol/docs/RECORDING.md) and [evidence guide](robotics/ros3_limassol/docs/EVIDENCE.md).
 
+## Receive-only MAVLink input (experimental)
+
+Observe an autopilot or MAVLink router that streams to UDP, with no ROS and no
+pymavlink. From `robotics/ros3_limassol`:
+
+```bash
+python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jsonl
+```
+
+`GLOBAL_POSITION_INT` and `SYS_STATUS` are mapped explicitly onto the telemetry
+schema, so the recording replays and exports evidence as above. The bridge
+**never sends MAVLink** — no heartbeats, stream requests or commands. Tested with
+independently encoded frames and a local UDP sender; no autopilot SITL or
+physical link has been verified. See the [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md).
+
 ## Offline anomaly and vision evidence (experimental)
 
 The read-only, standard-library `ros3_limassol.analysis` tool extracts
@@ -121,6 +136,7 @@ real-world visual accuracy is **not validated**. See the
 - Deterministic simulated communication blackout and recovery.
 - Streaming JSONL recording and replay.
 - Optional ROS 2 Humble/Jazzy simulator publisher and link observer, plus a separate receive-only recorder.
+- Experimental receive-only MAVLink v1/v2 UDP adapter (standard library only).
 - Experimental Rust validation, monitoring, and replay tools.
 
 The Rust core has optional HMAC-SHA256 envelopes; the Python ROS adapter does **not** support those signed envelopes yet.

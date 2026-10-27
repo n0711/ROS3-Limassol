@@ -94,6 +94,8 @@ receiver arrival clock differs from a separately running monitor's clock and
 timer schedule. Replay reproduces this recorder's observations and does not
 promise identical transition times to that other monitor.
 
-UDP and MAVLink input remain future work. Sender timestamps remain payload
+MAVLink over UDP can be recorded with the experimental receive-only
+[MAVLink bridge](MAVLINK.md); MAVLink frames are recorded as their mapped
+schema-v1 telemetry, not as raw bytes, and withheld samples appear as silence. Sender timestamps remain payload
 metadata. Replay reproduces the application rule; it does not measure network
 latency, discovery, scheduling or sensor capture freshness.
