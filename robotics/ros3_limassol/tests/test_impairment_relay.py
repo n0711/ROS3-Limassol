@@ -245,6 +245,9 @@ class CompareTests(unittest.TestCase):
                 else:
                     self.assertAlmostEqual(a[key], b[key], places=6)
         self.assertGreater(virtual["unexplained_stale"], 0)   # bursts did cause false alarms
+        # Without jitter nothing is reordered, so both virtual policies agree.
+        self.assertEqual(report["virtual_policy"], "reject")
+        self.assertEqual(report["virtual_liveness"], virtual)
         self.assertIn("Fate agreement", compare_tool.markdown(report))
 
     def test_relay_log_without_t0_is_rejected(self):

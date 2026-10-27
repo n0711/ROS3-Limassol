@@ -16,7 +16,11 @@ then scored with ``ros3_limassol.impairment.match_outages``, the rule the
 virtual report uses.
 
 The virtual side is ``run_robot`` on the same scenario, seed and robot. The
-scenario's ``rate_hz`` should be the live position rate.
+scenario's ``rate_hz`` should be the live position rate. The prediction is
+reported twice: under the scenario's ``late_samples`` policy, and under
+``"liveness"``. The second is the live path's analogue, because the bridge
+numbers samples in arrival order and every arrival counts. Duplicates are the
+exception: the bridge accepts both copies.
 
 Fate agreement checks the alignment itself. Sample k drew the same fate in
 both runs, so their outcomes (outage, burst, loss, forwarded) can differ only
@@ -24,6 +28,7 @@ where live timing moved a sample across an outage boundary.
 """
 
 import argparse
+import dataclasses
 import io
 import json
 from pathlib import Path
@@ -131,6 +136,10 @@ def compare(scenario, relay_lines, recording_text, robot_id=None):
     live_matched, live_unexplained = match_outages(model, scenario, events)
     virtual, _ = run_robot(model, scenario)
     truth = virtual["ground_truth"]
+    # The bridge numbers samples in arrival order, so on the live path every
+    # arrival counts, like the monitor's "liveness" policy without duplicates.
+    liveness, _ = run_robot(model, dataclasses.replace(scenario, late_samples="liveness"))
+    liveness_truth = liveness["ground_truth"]
     live_outcomes = [s["outcome"] for s in relay["samples"]]
     expected = virtual_outcomes(model, scenario, len(live_outcomes))
     differ = [k for k, (a, b) in enumerate(zip(live_outcomes, expected)) if a != b]
@@ -148,13 +157,18 @@ def compare(scenario, relay_lines, recording_text, robot_id=None):
         "live": _side(live_matched, live_unexplained, scenario.duration_s),
         "virtual": _side(truth["outages"], truth["unexplained_stale_episodes"],
                          scenario.duration_s),
+        "virtual_policy": scenario.late_samples,
         "virtual_monitor": virtual["monitor"],
+        "virtual_liveness": _side(liveness_truth["outages"],
+                                  liveness_truth["unexplained_stale_episodes"],
+                                  scenario.duration_s),
+        "virtual_liveness_monitor": liveness["monitor"],
         "relay": relay["summary"],
     }
 
 
 def markdown(report):
-    live, virtual = report["live"], report["virtual"]
+    live, virtual, liveness = report["live"], report["virtual"], report["virtual_liveness"]
     lines = [
         f"Robot {report['robot_id']}, seed {report['seed']}, {report['duration_s']:g} s, "
         f"stale_after {report['stale_after_s']:g} s, tick {report['tick_s']:g} s; "
@@ -162,6 +176,8 @@ def markdown(report):
         f"Fate agreement: {report['fate_agreement']['samples'] - report['fate_agreement']['differ']}"
         f"/{report['fate_agreement']['samples']} samples; alignment spread "
         f"{report['alignment']['spread_ms']} ms",
+        f"Virtual columns use late_samples={report['virtual_policy']!r}; "
+        f"virtual 'liveness' (the bridge path's analogue) is in brackets.",
         "",
         "| Outage (s) | Live detection (s) | Virtual detection (s) | Live recovery (s) | Virtual recovery (s) |",
         "| --- | --- | --- | --- | --- |",
@@ -174,12 +190,13 @@ def markdown(report):
             return "already STALE" if m["already_stale"] else "—"
         return f"{m[key]:.3f}"
 
-    for a, b in zip(live["outages"], virtual["outages"]):
+    for a, b, c in zip(live["outages"], virtual["outages"], liveness["outages"]):
         lines.append(f"| {a['outage_start_s']:g}–{a['outage_end_s']:g} | "
-                     f"{cell(a, 'detection_latency_s')} | {cell(b, 'detection_latency_s')} | "
-                     f"{cell(a, 'recovery_latency_s')} | {cell(b, 'recovery_latency_s')} |")
+                     f"{cell(a, 'detection_latency_s')} | {cell(b, 'detection_latency_s')} "
+                     f"[{cell(c, 'detection_latency_s')}] | {cell(a, 'recovery_latency_s')} | "
+                     f"{cell(b, 'recovery_latency_s')} [{cell(c, 'recovery_latency_s')}] |")
     lines += ["", f"Unexplained STALE: live {live['unexplained_stale']}, "
-                  f"virtual {virtual['unexplained_stale']}"]
+                  f"virtual {virtual['unexplained_stale']} [{liveness['unexplained_stale']}]"]
     return "\n".join(lines)
 
 
