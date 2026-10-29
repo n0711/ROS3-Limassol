@@ -55,7 +55,9 @@ is within the last 256 of the highest and has not been seen before. It then
 refreshes arrival recency, because it did arrive. It counts in `accepted`
 (and in a separate `late_accepted` counter in evidence reports), and `last_sequence` stays the highest. Repeats, samples too far
 behind to check for repeats, and samples from retired sessions are still
-rejected. The status payload fields are unchanged.
+rejected. The status payload fields are unchanged. Accepted sequence history
+is pruned as the highest sequence advances, retaining at most `late_window`
+distinct sequence numbers even when the sender skips sequence values.
 
 `HEALTHY` keeps its meaning under either policy: a valid sample has arrived
 recently. Under jitter larger than the sample period, `reject` turns many fresh
