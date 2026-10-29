@@ -101,6 +101,25 @@ class LateSampleLivenessTests(unittest.TestCase):
         for repeat in (195, 190):
             self.assertFalse(monitor.ingest(packet(sequence=repeat).to_json(), 0.4))
 
+    def test_seen_history_stays_in_window_after_gaps_and_restart(self):
+        monitor = self.late(late_window=4)
+        for sequence in range(12):
+            self.assertTrue(monitor.ingest(
+                packet(sequence=sequence).to_json(), sequence / 10
+            ))
+            self.assertLessEqual(len(monitor._recent), monitor.late_window)
+        self.assertEqual(monitor._recent, {8, 9, 10, 11})
+        self.assertFalse(monitor.ingest(packet(sequence=8).to_json(), 1.2))
+        self.assertTrue(monitor.ingest(packet(sequence=20).to_json(), 1.3))
+        self.assertEqual(monitor._recent, {20})
+        self.assertTrue(monitor.ingest(packet(sequence=18).to_json(), 1.4))
+        self.assertFalse(monitor.ingest(packet(sequence=18).to_json(), 1.5))
+        self.assertEqual(monitor._recent, {18, 20})
+        self.assertTrue(monitor.ingest(
+            packet(session_id="boot_2", sequence=0).to_json(), 1.6
+        ))
+        self.assertEqual(monitor._recent, {0})
+
     def test_sessions_keep_their_rules(self):
         monitor = self.late()
         monitor.ingest(packet(sequence=5).to_json(), 0)
