@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Observe arrival liveness with a receiver's monotonic clock."""
 
-from dataclasses import asdict, dataclass
 import json
+from dataclasses import asdict, dataclass
+from heapq import heappop, heappush
 
 from .telemetry import Telemetry, finite_number, validate_robot_id
 
@@ -55,7 +56,8 @@ class LinkMonitor:
             raise ValueError("late_window must be an integer in [1, 65536]")
         self.late_samples = late_samples
         self.late_window = late_window
-        self._recent = set()  # sequences seen within the window (liveness mode)
+        self._recent = set()  # sequences in the active late-sample window
+        self._recent_min_heap = []  # expire lowest sequences in O(log window)
         self.late_accepted = 0
         self._clock = None
         self._last_received = None
@@ -103,6 +105,7 @@ class LinkMonitor:
             self._seen_sessions.add(packet.session_id)
             self._session = packet.session_id
             self._recent.clear()
+            self._recent_min_heap.clear()
         self._last_sequence = packet.sequence
         self._remember(packet.sequence)
         self._last_received = now_s
@@ -117,10 +120,12 @@ class LinkMonitor:
     def _remember(self, sequence):
         if self.late_samples != "liveness":
             return
+        # _remember only sees newly accepted sequences, so heap entries are unique.
         self._recent.add(sequence)
-        if len(self._recent) > 2 * self.late_window:
-            floor = self._last_sequence - self.late_window
-            self._recent = {s for s in self._recent if s > floor}
+        heappush(self._recent_min_heap, sequence)
+        floor = self._last_sequence - self.late_window
+        while self._recent_min_heap and self._recent_min_heap[0] <= floor:
+            self._recent.remove(heappop(self._recent_min_heap))
 
     def snapshot(self, now_s):
         now_s = self._advance(now_s)
