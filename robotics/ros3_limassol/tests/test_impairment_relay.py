@@ -3,6 +3,9 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from ros3_limassol.impairment import link_fates, parse_scenario
@@ -186,7 +189,7 @@ class TimedSocket(FakeSocket):
 class CompareTests(unittest.TestCase):
     """A perfectly periodic synthetic live run must score exactly like the model."""
 
-    def run_synthetic(self, sc, warmup=3.0, period=0.25):
+    def run_synthetic(self, sc, warmup=3.0, period=0.25, edit_log=None):
         base, self.now = 100.0, 100.0
         out = TimedSocket(lambda: self.now)
         log = []
@@ -229,7 +232,11 @@ class CompareTests(unittest.TestCase):
                     "burst_loss": {"enter": model.burst_enter, "exit": model.burst_exit},
                     "duplicate": model.duplicate,
                     "outages": [list(o) for o in model.outages]}
+        log.append(relay.summary())
+        if edit_log is not None:
+            log = edit_log(log)
         lines = [json.dumps(settings)] + [json.dumps(e) for e in log]
+        self.relay_lines, self.recording_text = lines, text
         return compare_tool.compare(sc, lines, text)
 
     def test_periodic_live_run_matches_the_virtual_prediction(self):
@@ -315,6 +322,75 @@ class CompareTests(unittest.TestCase):
     def test_relay_log_without_t0_is_rejected(self):
         with self.assertRaises(ValueError):
             compare_tool.load_relay_log(['{"event": "first_datagram", "wall_ns": 1}'])
+
+    def test_comparison_rejects_missing_final_summary(self):
+        with self.assertRaisesRegex(ValueError, "no final summary"):
+            self.run_synthetic(scenario(), edit_log=lambda log: log[:-1])
+
+    def test_comparison_rejects_truncated_sample_tail(self):
+        def truncate(log):
+            last_sample = max(i for i, entry in enumerate(log) if entry["event"] == "sample")
+            return log[:last_sample] + log[last_sample + 1:]
+
+        with self.assertRaisesRegex(ValueError, "summary sample count mismatch"):
+            self.run_synthetic(scenario(), edit_log=truncate)
+
+    def test_comparison_requires_an_integer_summary_sample_count(self):
+        def corrupt(count):
+            def edit(log):
+                log[-1] = {**log[-1], "samples": count(log[-1]["samples"])}
+                return log
+            return edit
+
+        for count in (lambda n: float(n), lambda n: True, lambda n: -1,
+                      lambda n: None):
+            with self.subTest(count=count):
+                with self.assertRaisesRegex(ValueError, "summary sample count mismatch"):
+                    self.run_synthetic(scenario(), edit_log=corrupt(count))
+
+    def test_relay_log_requires_one_unambiguous_origin(self):
+        t0 = {"event": "t0", "wall_ns": WALL0}
+        with self.assertRaisesRegex(ValueError, "more than one t0"):
+            compare_tool.load_relay_log([json.dumps(t0), json.dumps(t0)])
+        for value in (None, True, -1, 1.5, "1"):
+            with self.subTest(wall_ns=value):
+                with self.assertRaisesRegex(ValueError, "t0 wall_ns"):
+                    compare_tool.load_relay_log([json.dumps({**t0, "wall_ns": value})])
+
+    def test_relay_log_rejects_records_after_summary_and_nonobjects(self):
+        t0 = json.dumps({"event": "t0", "wall_ns": WALL0})
+        summary = json.dumps({"event": "summary", "samples": 0})
+        for record in (summary, json.dumps({"event": "sample", "k": 0})):
+            with self.subTest(record=record):
+                with self.assertRaisesRegex(ValueError, "record after final summary"):
+                    compare_tool.load_relay_log([t0, summary, record])
+        for record in ("null", "[]", '"sample"', "7"):
+            with self.subTest(record=record):
+                with self.assertRaisesRegex(ValueError, "expected a JSON object"):
+                    compare_tool.load_relay_log([record])
+
+    def test_cli_rejects_incomplete_relay_without_printing_a_report(self):
+        self.run_synthetic(scenario())
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scenario_path = root / "scenario.json"
+            scenario_path.write_text(json.dumps({
+                "seed": 11, "duration_s": 60, "tick_s": 0.1, "stale_after_s": 1.0,
+                "robots": [{"robot_id": "usv01", "rate_hz": 4}],
+            }), encoding="utf-8")
+            relay_path = root / "relay.jsonl"
+            relay_path.write_text("\n".join(self.relay_lines[:-1]) + "\n", encoding="utf-8")
+            recording_path = root / "recording.jsonl"
+            recording_path.write_text(self.recording_text, encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(TOOLS / "compare_impairment.py"),
+                 str(scenario_path), str(relay_path), str(recording_path), "--json"],
+                capture_output=True, text=True, check=False,
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("no final summary", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
 
 if __name__ == "__main__":

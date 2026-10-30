@@ -1,5 +1,31 @@
 # Validation record
 
+## Live impairment relay-log completeness (30 October 2026)
+
+On the pre-patch main commit `8bd9b73`, a synthetic relay log with matching
+scenario settings, `t0` and only sample 0, but no final summary, was accepted
+by `tools/compare_impairment.py`. It reported 1/1 sample fates agreeing while
+`relay` was null. A complete bridge recording did not reveal the relay-log
+truncation.
+
+The comparison now rejects missing or nonterminal summaries, duplicate or
+invalid origins, non-object JSON records, and summary/sample-count mismatches.
+Six new regression tests include a deleted sample tail whose remaining indices
+are still contiguous, and a CLI check requiring exit status 2 with no report
+or traceback. Existing periodic and drifting-source comparisons still pass
+using the relay's actual summary record.
+
+**Observed locally on Linux, Python 3.12.14:** 175 tests run, 168 passed and
+seven ROS-dependent tests skipped because `rclpy` is unavailable. The 18
+impairment-relay tests all passed. The deterministic demo retained
+WAITING/HEALTHY/STALE/HEALTHY at 0.0/0.0/2.9/5.0 s, with 51 accepted and zero
+rejected samples. Compileall and `git diff --check` passed.
+
+This is synthetic software evidence. No new ROS graph, ArduPilot SITL, radio
+or hardware experiment was run locally, and the historical 20-run SITL results
+below were not independently reproduced. A final relay summary checks log
+consistency; it does not prove that an interrupted run covered its scenario.
+
 ## Impairment model against live ArduPilot SITL traffic (27 October 2026)
 
 This tests whether the seeded impairment model (#29) predicts a live stack
