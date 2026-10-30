@@ -61,13 +61,22 @@ def load_relay_log(lines):
             record = json.loads(line)
         except ValueError as exc:
             raise ValueError(f"relay log line {number}: invalid JSON") from exc
+        if not isinstance(record, dict):
+            raise ValueError(f"relay log line {number}: expected a JSON object")
+        if log["summary"] is not None:
+            raise ValueError(f"relay log line {number}: record after final summary")
         event = record.get("event")
         if event == "scenario":
             if log["scenario"] is not None:
                 raise ValueError("relay log has more than one scenario record")
             log["scenario"] = record
         elif event == "t0":
-            log["t0_wall_ns"] = record["wall_ns"]
+            if log["t0_wall_ns"] is not None:
+                raise ValueError("relay log has more than one t0 record")
+            wall_ns = record.get("wall_ns")
+            if type(wall_ns) is not int or wall_ns < 0:
+                raise ValueError(f"relay log line {number}: t0 wall_ns must be a nonnegative integer")
+            log["t0_wall_ns"] = wall_ns
         elif event == "sample":
             log["samples"].append(record)
         elif event == "summary":
@@ -103,6 +112,13 @@ def validate_relay_log(relay, scenario, model):
     for index, sample in enumerate(relay["samples"]):
         if sample.get("k") != index:
             raise ValueError(f"relay sample index out of sequence at position {index}")
+    summary = relay["summary"]
+    if summary is None:
+        raise ValueError("relay log has no final summary; retain the complete relay log")
+    count = summary.get("samples")
+    if type(count) is not int or count != len(relay["samples"]):
+        raise ValueError("relay summary sample count mismatch: "
+                         f"recorded {count!r}, found {len(relay['samples'])} sample records")
 
 
 def live_events(recording_text, robot_id, stale_after_s, t0_wall_ns, duration_s):

@@ -158,6 +158,21 @@ uses. It sets three results side by side:
   source. It differs from the live-timing model only in source timing: rate
   drift, phase and jitter.
 
+Retain the **complete relay log**, including its final `summary`, alongside
+the bridge recording. Comparison requires one scenario record, one `t0` with
+an integer wall-clock timestamp, and a final summary whose integer `samples`
+count matches every contiguous sample record. Duplicate origins, records
+after the summary, missing summaries and mismatched sample totals are rejected
+before any report is printed. This catches a missing sample tail even when
+the remaining indices still start at zero without gaps.
+
+These checks establish log consistency, not that the whole scenario ran: an
+interrupted relay can still write a summary. Also inspect
+`alignment.covers_scenario` and the relay's exit conditions. A bridge recording
+that covers the scenario does not establish completeness of its separate
+relay log. Keep both original artifacts; do not reconstruct a summary to make
+an incomplete log pass.
+
 The report also gives the live source's effective rate and its largest drift
 from the model's sample times k / `rate_hz`. Its **fate agreement** line counts
 samples whose outcome (outage, burst, loss, forwarded) matches the nominal
