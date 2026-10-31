@@ -105,6 +105,14 @@ timestamps in its samples, replays it, and prints one row per relay window:
 - **HEALTHY after resume:** includes the wait for the next
   `GLOBAL_POSITION_INT`.
 
+The comparison requires a terminal relay summary and complete start, end and
+first-forwarded-after records for every observed window. Truncated logs,
+duplicate records and inconsistent timestamps are rejected before a report is
+printed. If capture stops before recovery, rerun the experiment; an incomplete
+window cannot establish successful detection. A completed run with no windows
+is still accepted as a control. These consistency checks do not prove that
+every planned window was captured.
+
 It also reports STALE changes that no window explains, and whether replay
 reproduces the bridge's live transitions. A STALE after the relay has stopped
 is expected and listed separately.

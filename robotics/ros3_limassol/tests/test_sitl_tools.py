@@ -122,6 +122,33 @@ def relay_log(windows, end_s=6.0):
 
 
 class CompareTests(unittest.TestCase):
+    def test_rejects_truncated_logs_instead_of_reporting_success(self):
+        complete = relay_log([(2.0, 3.5, 1.9, 3.5)])
+        for length in range(1, len(complete)):
+            with self.subTest(length=length), self.assertRaisesRegex(ValueError, "final summary"):
+                compare_tool.compare(complete[:length], recording([]))
+        for missing in range(1, 4):
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                compare_tool.compare(complete[:missing] + complete[missing + 1:], recording([]))
+
+    def test_completed_zero_window_control_remains_valid(self):
+        self.assertTrue(compare_tool.compare(relay_log([]), recording([]))["all_expected_detected"])
+
+    def test_rejects_duplicate_nonobject_and_invalid_summary_records(self):
+        complete = relay_log([(2.0, 3.5, 1.9, 3.5)])
+        cases = [complete + complete[-1:], complete[:1] + complete,
+                 complete[:2] + complete[1:], ["null"], ["[]"]]
+        for elapsed in (None, True, -1, float("nan"), float("inf"), "6"):
+            cases.append(complete[:-1] + [json.dumps({"event": "summary", "elapsed_s": elapsed})])
+        for lines in cases:
+            with self.subTest(lines=lines), self.assertRaises(ValueError):
+                compare_tool.load_relay_log(lines)
+
+    def test_rejects_recovery_after_summary_end(self):
+        lines = relay_log([(2.0, 3.5, 1.9, 3.5)], end_s=3.0)
+        with self.assertRaisesRegex(ValueError, "timestamps"):
+            compare_tool.compare(lines, recording([]))
+
     def test_matches_detectable_outage_and_skips_short_one(self):
         text = recording([(1.9, 3.5), (4.2, 4.8)])
         log = relay_log([(2.0, 3.5, 1.9, 3.5), (4.3, 4.8, 4.2, 4.8)])
