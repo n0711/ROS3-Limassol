@@ -1,5 +1,24 @@
 # Validation record
 
+## Outage comparison rejects incomplete logs (31 October 2026)
+
+On main `65da1ea`, a valid synthetic recording compared against only a relay
+origin and outage-start record incorrectly reported `all_expected_detected: true`.
+The missing gap became an unknown expectation and matched the absence of a
+detected transition. The comparison now refuses missing final summaries,
+incomplete or duplicate window records, non-object JSON, invalid numeric fields
+and inconsistent boundary timestamps. Completed zero-window controls remain valid.
+
+Local Linux check: 179 tests ran, 172 passed, seven ROS-dependent tests skipped.
+The deterministic demo retained WAITING/HEALTHY/STALE/HEALTHY at
+0.0/0.0/2.9/5.0 s, with 51 accepted and zero rejected samples. Compileall and
+`git diff --check` passed. Four regression tests cover truncation, missing
+boundaries, malformed/duplicate records, controls and recovery after run end.
+
+This is synthetic software evidence only. ROS graph tests, ArduPilot SITL,
+physical links and hardware were not run. Log consistency cannot establish
+that all planned outage windows or the full intended duration were captured.
+
 ## Live impairment relay-log completeness (30 October 2026)
 
 On the pre-patch main commit `8bd9b73`, a synthetic relay log with matching

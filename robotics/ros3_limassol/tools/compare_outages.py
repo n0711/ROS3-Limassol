@@ -21,6 +21,7 @@ only when that gap reaches ``--stale-after``; on loopback it should appear at
 import argparse
 import io
 import json
+import math
 from pathlib import Path
 import statistics
 import sys
@@ -38,22 +39,70 @@ def load_relay_log(lines):
     windows = {}
     first = None
     end = None
-    for number, line in enumerate(lines, 1):
+
+    def number(record, key, *, integer=False):
+        value = record.get(key)
+        if (isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or value < 0
+                or (integer and not isinstance(value, int))):
+            raise ValueError(f"relay log: invalid {key}")
+        return value
+
+    for line_number, line in enumerate(lines, 1):
         if not line.strip():
             continue
         try:
             record = json.loads(line)
         except ValueError as exc:
-            raise ValueError(f"relay log line {number}: invalid JSON") from exc
+            raise ValueError(f"relay log line {line_number}: invalid JSON") from exc
+        if not isinstance(record, dict):
+            raise ValueError("relay log: expected a JSON object")
+        if end is not None:
+            raise ValueError("relay log: record after final summary")
         event = record.get("event")
         if event == "first_datagram":
-            first = record["wall_ns"]
+            if first is not None:
+                raise ValueError("relay log: duplicate first_datagram")
+            first = number(record, "wall_ns", integer=True)
         elif event in ("drop_start", "drop_end", "first_forwarded_after"):
-            windows.setdefault(record["window"], {})[event] = record
-        elif event == "summary" and first is not None and record.get("elapsed_s") is not None:
-            end = first + int(record["elapsed_s"] * 1e9)
+            if first is None:
+                raise ValueError("relay log: window before first_datagram")
+            index = number(record, "window", integer=True)
+            window = windows.setdefault(index, {})
+            expected = ("drop_start", "drop_end", "first_forwarded_after")
+            if len(window) >= 3 or event != expected[len(window)]:
+                raise ValueError("relay log: duplicate or out-of-order window record")
+            if event == "first_forwarded_after":
+                number(record, "wall_ns", integer=True)
+            else:
+                number(record, "scheduled_s")
+                number(record, "scheduled_wall_ns", integer=True)
+                if event == "drop_start":
+                    number(record, "last_forwarded_wall_ns", integer=True)
+                else:
+                    number(record, "dropped", integer=True)
+            window[event] = record
+        elif event == "summary":
+            if first is None:
+                raise ValueError("relay log: summary before first_datagram")
+            end = first + int(number(record, "elapsed_s") * 1e9)
+        else:
+            raise ValueError("relay log: unknown event")
     if first is None:
         raise ValueError("relay log has no first_datagram record")
+    if end is None:
+        raise ValueError("relay log has no final summary")
+    for window in windows.values():
+        if len(window) != 3:
+            raise ValueError("relay log: incomplete outage window")
+        start = window["drop_start"]
+        stop = window["drop_end"]
+        resumed = window["first_forwarded_after"]["wall_ns"]
+        if not (start["last_forwarded_wall_ns"] <= start["scheduled_wall_ns"]
+                < stop["scheduled_wall_ns"] <= resumed <= end):
+            raise ValueError("relay log: inconsistent window timestamps")
+        if not start["scheduled_s"] < stop["scheduled_s"]:
+            raise ValueError("relay log: inconsistent scheduled window")
     return first, end, [windows[i] for i in sorted(windows)]
 
 
