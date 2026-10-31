@@ -1,0 +1,294 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=23mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+\setmonofont{lmmono10-regular.otf}[Scale=0.85,BoldFont=lmmonolt10-bold.otf]
+\usepackage{amsmath,amssymb,enumitem,listings,xurl}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlength{\emergencystretch}{2em}
+\setlist{nosep,leftmargin=*}
+\lstset{basicstyle=\ttfamily\scriptsize,columns=fullflexible,
+breaklines=true,keepspaces=true,showstringspaces=false,aboveskip=6pt,belowskip=6pt}
+\title{A Minimal Protocol for Three-Vehicle SITL Validation\\of ROS3-Limassol Receiver-Arrival Independence}
+\author{Charalampos Nadiotis\\OpenPELAOS / PELAOS Tech\\
+\small Initial project idea: Christos Paparistodemou}
+\date{31 October 2026}
+\hypersetup{pdftitle={ROS3-Limassol three-vehicle SITL validation protocol},pdfauthor={Charalampos Nadiotis}}
+\begin{document}
+\maketitle
+\vspace{-20pt}
+\begin{abstract}
+This prospective protocol defines the smallest independently assessable part
+of ROS3-Limassol issue~41: two stationary, three-vehicle ArduPilot Rover
+software-in-the-loop (SITL) experiments using separate loopback telemetry
+paths. Only the second vehicle's path undergoes scripted outages. Existing
+receive-only bridges, the one-way outage relay, recording and replay tools
+are reused without changing monitor semantics. Acceptance requires detection
+and recovery for vehicle~2, absence of stale states for vehicles~1 and~3
+during the declared outages, complete evidence records, and live/replay
+agreement for all vehicles. This document reports no new experiment or
+performance result. Shared-link isolation, authenticated telemetry, physical
+radio operation and field validation remain separate evidence requirements.
+\end{abstract}
+
+\section{Scope and repository baseline}
+Issue~41 distinguishes separate-link setting~A and multiplexed-link
+setting~B~\cite{issue41}. This note specifies slice~41A only. Two successful
+A runs do not close issue~41, whose acceptance additionally requires two
+B runs. A separate path cannot establish the correctness of source filtering
+on a common stream.
+
+The inspected repository baseline is commit
+\texttt{469ebda}, containing the simulation-paper documentation merge~52;
+the relevant runtime and historical evidence baseline is
+\texttt{65da1ea17d2a1de68e24a8f6e3120bbfd2fd1e11}.
+Issue~33 is closed and PR~38 merged on 27 October 2026. Its twenty
+single-vehicle impairment runs are \emph{reported historical SITL results},
+not independently reproduced measurements in this work~\cite{pr38,validation}.
+The older unchecked live-impairment item in tracking issue~36 must therefore
+be interpreted with its later discussion and merged code~\cite{issue36}.
+
+The bridge's default timeout is already 3.0~s. The proposed experiment
+explicitly uses 1.0~s at a verified 4~Hz position stream to detect the 2~s
+outage; this does not change the default. Issue~41 already has a claimant.
+This documentation work does not take over its implementation. Execution
+requires coordination with that claimant and a host free of competing SITL
+experiments. The earlier different-host exception concerned work before
+PR~38 landed; that dependency is now satisfied.
+
+\section{Observation model and proposed method}
+For vehicle $v\in\{1,2,3\}$, let $a_v(t)$ be the receiver time of its most
+recent accepted telemetry sample at evaluation time $t$. The implemented
+monitor rule is
+\begin{equation}
+L_v(t)=\begin{cases}
+\mathrm{WAITING},&\text{no accepted sample exists},\\
+\mathrm{STALE},&t-a_v(t)\geq\tau,\\
+\mathrm{HEALTHY},&t-a_v(t)<\tau.
+\end{cases}
+\label{eq:state}
+\end{equation}
+Here $\tau=1.0$~s and the requested evaluation tick is 0.1~s.
+Thus a sample accepted at receiver time 10.0~s becomes stale at the first
+evaluation at or after 11.0~s if no later sample is accepted. If the actual
+maximum evaluation gap is $\Delta$, detection occurs conditionally within
+$[a_v+\tau,a_v+\tau+\Delta]$. A nominal tick is not a measured scheduling
+guarantee. Detection relative to outage onset also depends on the final
+accepted position sample before the outage.
+
+\newpage
+\subsection{Setup and independent perturbation}
+Pin a built ArduPilot \texttt{Rover-4.6.3} checkout (historical short commit
+\texttt{3fc7011}); record its full SHA and all tool versions. Launch three
+stationary instances with instance indices 0--2 and system IDs 1--3, each
+with its own MAVProxy process and working directory. Verify the actual
+endpoints rather than treating launch arguments as evidence. Expected SITL
+TCP ports are 5760/5770/5780. Use UDP~14550 for bridge~1,
+14560 for the vehicle~2 relay input, 14611 for bridge~2, and 14570 for
+bridge~3. Additional default outputs must not collide or duplicate a
+measured endpoint. All measured endpoints bind to \texttt{127.0.0.1}.
+
+Only vehicle~2 traverses \texttt{tools/udp\_outage\_relay.py}.
+Its half-open drop windows, relative to its first datagram, are
+\begin{equation}
+W_1=[30,35)\ \mathrm{s},\qquad W_2=[70,72)\ \mathrm{s}.
+\end{equation}
+Consequently, the proposed link interruptions last 5~s and 2~s. The relay
+remains one-way and single-source; nothing travels from a bridge toward a
+vehicle. MAVProxy requests the stream outside the receive-only measurement
+path. Before the first window, confirm all three IDs, accepted position
+samples, \texttt{SYS\_STATUS}, and stable 4~Hz position delivery. If the
+streams have not settled by 30~s, invalidate the attempt rather than
+changing a threshold after observing failure.
+
+\subsection{Time alignment and independent controls}
+Bridge recordings use independent receiver-relative clocks. For each
+vehicle, estimate the wall-clock origin from accepted samples as
+\begin{equation}
+\widehat{o}_v=\operatorname{median}_k(T_{v,k}-r_{v,k}),
+\end{equation}
+where $T_{v,k}$ is the sample's receiver wall timestamp expressed in seconds
+and $r_{v,k}$ is its recording time in seconds. Convert transitions using
+$\widehat{T}_v=\widehat{o}_v+r_v$ and report the spread of the offset
+estimates as alignment uncertainty. Apply the relay's wall-clock window
+boundaries to all three recordings. Do not assume their start times coincide.
+
+For each control $v\in\{1,3\}$, require
+\begin{equation}
+\{T:L_v(T)=\mathrm{STALE}\}\cap(W_1\cup W_2)=\varnothing,
+\end{equation}
+after expressing the windows and states on the same wall-clock axis.
+This checks state occupancy, including a stale episode that began before
+a window, rather than merely counting transitions occurring inside it.
+Retain the wider recovery interval for diagnosis as well.
+
+\section{Acceptance and evidence integrity}
+Execute the complete setting twice with fresh filenames (A1 and A2).
+For every vehicle~2 run, require two complete relay windows with nonzero
+dropped counts, matched stale detection, and subsequent healthy recovery.
+Report the measured detection and recovery intervals and alignment spread;
+do not substitute a theoretical timing interval for observations.
+The battery-age gate may delay accepted recovery samples and must be
+explained~\cite{mavlink}.
+
+For all six vehicle recordings, compare ordered live and replay state
+sequences after omitting summary records. Require identical sequences and
+report maximum absolute transition-time differences. Pass the correct
+\texttt{rover1/2/3} robot ID and 1.0~s timeout explicitly. Require zero
+\texttt{crc\_errors} and \texttt{bad\_length}; explain all nonzero mapping
+and withheld-sample counters. Check startup and deliberate shutdown
+separately from declared outage intervals.
+
+\textbf{Immediate stop rule.} If bridge~1 or bridge~3 reacts to vehicle~2's
+outage, stop the experiment, retain all evidence and request maintainer
+investigation. Treat this as a correctness defect; do not tune monitor
+semantics or relax acceptance.
+
+\newpage
+PR~51 is open at this protocol's source inspection and addresses incomplete
+outage logs being accepted as successful detection~\cite{pr51}. Prefer a
+reviewed merge before scoring. Otherwise manually check both complete
+start/end/resume record sets, the genuine terminal summary, counters and
+recording coverage. A true \texttt{all\_expected\_detected} field alone is
+insufficient. Even consistent logs do not prove that all planned time
+intervals were observed. Never reconstruct missing evidence to satisfy a
+checker.
+
+Retain outside git each original recording, live output, relay log, replay
+output and comparison report, together with commands, versions, SHA-256
+hashes and an evidence-retention location. Preserve failed attempts.
+Do not commit JSONL recordings or logs. After actual execution, add a dated
+section to \texttt{robotics/ros3\_limassol/docs/VALIDATION.md}; do not add
+unexecuted planned results there.
+
+\section{Implementation boundary and maintainer decisions}
+Slice~41A requires no runtime change. Its documentation comprises this note
+and a pointer in \texttt{SITL.md}. Run the package unittest suite, demo,
+compile checks and \texttt{git diff --check} before the documentation PR;
+report unavailable ROS checks as skipped or not run.
+
+The timeout default decision is resolved. MAVLink signing decisions D1--D4
+in issue~39 remain unresolved and must precede signing implementation;
+signature verification is required before radio-link evaluation~\cite{issue39}.
+They do not block unsigned loopback slice~41A. Hardware availability and
+paper-publication decisions likewise do not block this protocol.
+
+Future slice~41B adds an optional \texttt{--system-id} selector to the
+existing outage relay, keeping whole-datagram dropping unchanged when the
+selector is absent. It requires crafted MAVLink~1/2 header tests,
+injected-clock boundary tests, single-source checks, and per-window passed
+and dropped counts. Verify that every shared output carries all three
+vehicles and that all monitored paths experience the same vehicle-2-only
+impairment. Every bridge should count other vehicles as
+\texttt{other\_source}. The proposed first-header datagram selection is not
+general frame-level filtering: if an actual datagram mixes source IDs,
+stop for a maintainer scope decision before claiming isolation.
+
+\section{Limitations and reporting status}
+This is a prospective protocol, not a new validation result or a submission.
+No new SITL experiment was performed for it. Even successful 41A execution
+would establish only receiver-arrival behaviour for the tested separate
+loopback paths. Shared-link isolation awaits 41B. Physical radio links,
+companion-computer deployment, field behaviour, real network impairments,
+PX4, signing/authentication, other routers and scalability beyond three
+vehicles remain unestablished. \texttt{HEALTHY} describes recent accepted
+arrivals, not vehicle safety, source authenticity, capture freshness,
+position accuracy or autonomy. This note changes no software or manuscript
+licence and leaves the existing manuscript intact.
+
+\appendix
+\section{Reproducible proposed commands}
+The following Bash commands are an unexecuted run plan. Set absolute paths
+to existing checkouts; build pinned Rover SITL using the repository runbook
+first~\cite{sitl}. Export the \emph{same resolved} \texttt{AP}, \texttt{PKG}
+and \texttt{RUN} values in all launch terminals. Use a fresh directory for A2.
+\begin{lstlisting}[language=bash]
+export AP=/absolute/path/to/ardupilot
+export PKG=/absolute/path/to/ROS3-Limassol/robotics/ros3_limassol
+export RUN=$(mktemp -d /tmp/ros3-41A1-XXXXXX)
+cd "$PKG"
+python -m unittest discover -s tests -v
+git diff --check
+git rev-parse HEAD
+git -C "$AP" rev-parse HEAD
+git -C "$AP" describe --tags --always
+\end{lstlisting}
+
+\newpage
+\textbf{Terminal 1: receivers, started before SITL.}
+\begin{lstlisting}[language=bash]
+cd "$PKG"
+for i in 1 2 3; do
+  case "$i" in 1) port=14550;; 2) port=14611;; 3) port=14570;; esac
+  python -m ros3_limassol.mavlink_bridge \
+    --listen "127.0.0.1:$port" --system-id "$i" --robot-id "rover$i" \
+    --stale-after 1.0 --tick 0.1 --duration 180 \
+    --record "$RUN/v$i.jsonl" > "$RUN/v$i.out" &
+done
+wait
+\end{lstlisting}
+\textbf{Terminal 2: vehicle 2 relay, started before SITL.}
+\begin{lstlisting}[language=bash]
+cd "$PKG"
+python tools/udp_outage_relay.py --listen 127.0.0.1:14560 \
+  --forward 127.0.0.1:14611 --outage 30:35 --outage 70:72 \
+  --duration 120 --log "$RUN/relay.jsonl" > "$RUN/relay.out"
+\end{lstlisting}
+\textbf{Terminal 3: three independent stationary instances.}
+\begin{lstlisting}[language=bash]
+for i in 0 1 2; do
+  mkdir -p "$RUN/rover$i"
+  (cd "$RUN/rover$i"
+   "$AP/Tools/autotest/sim_vehicle.py" -v Rover -I"$i" \
+     --sysid "$((i+1))" --no-rebuild \
+     --mavproxy-args="--non-interactive --streamrate 4" \
+     > "$RUN/sitl$i.out" 2>&1) &
+done
+wait
+\end{lstlisting}
+Do not add duplicate default \texttt{--out} endpoints. Record launched
+process IDs and terminate only those experiment processes after collection.
+The bridge's 180~s timer starts at bridge launch; the relay's 120~s timer
+starts at its first datagram. If startup exceeds the 60~s allowance,
+invalidate the incomplete attempt and rerun with a longer bridge duration.
+Both windows and recovery must lie within each recording.
+
+\textbf{Post-run scoring; inspect evidence completeness first.}
+\begin{lstlisting}[language=bash]
+cd "$PKG"
+python tools/compare_outages.py "$RUN/relay.jsonl" "$RUN/v2.jsonl" \
+  --robot-id rover2 --stale-after 1.0 \
+  --bridge-output "$RUN/v2.out" --json > "$RUN/v2-compare.json"
+for i in 1 2 3; do
+  python -m ros3_limassol.replay "$RUN/v$i.jsonl" \
+    --robot-id "rover$i" --stale-after 1.0 --json \
+    > "$RUN/v$i-replay.jsonl"
+done
+\end{lstlisting}
+The vehicle~2 comparator checks its live/replay transitions. Separately
+compare the live and replay sequences for vehicles~1 and~3 and evaluate
+their state occupancy on the common wall-clock axis. Do not apply vehicle~2's
+outage-detection expectations to the control vehicles.
+
+\begin{thebibliography}{9}
+\small
+\bibitem{issue41} ROS3-Limassol, issue~41, ``Multi-vehicle SITL: three Rovers,
+one bridge per system ID.'' \url{https://github.com/n0711/ROS3-Limassol/issues/41}.
+\bibitem{issue36} ROS3-Limassol, tracking issue~36 and maintainer comments.
+\url{https://github.com/n0711/ROS3-Limassol/issues/36}.
+\bibitem{pr38} ROS3-Limassol, merged PR~38, live impairment on SITL.
+\url{https://github.com/n0711/ROS3-Limassol/pull/38}.
+\bibitem{validation} ROS3-Limassol, validation record, runtime baseline
+\texttt{65da1ea}, \texttt{robotics/ros3\_limassol/docs/VALIDATION.md}.
+\bibitem{mavlink} ROS3-Limassol, receive-only MAVLink guide, same baseline,
+\texttt{robotics/ros3\_limassol/docs/MAVLINK.md}.
+\bibitem{pr51} ROS3-Limassol, PR~51, ``Reject incomplete outage logs before
+reporting detection success.'' \url{https://github.com/n0711/ROS3-Limassol/pull/51}.
+\bibitem{issue39} ROS3-Limassol, issue~39, signing design for approval.
+\url{https://github.com/n0711/ROS3-Limassol/issues/39}.
+\bibitem{sitl} ROS3-Limassol, SITL runbook, runtime baseline
+\texttt{65da1ea}, \texttt{robotics/ros3\_limassol/docs/SITL.md}.
+\end{thebibliography}
+\end{document}
