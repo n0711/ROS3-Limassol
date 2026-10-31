@@ -1,5 +1,27 @@
 # Validation record
 
+## Paper simulation-update review (31 October 2026)
+
+The paper source adds a dated simulation-only section and three tables
+transcribed from the historical records below and `IMPAIRMENT.md` at commit
+`65da1ea`. The original version-0.1.0 sections 1--7 are preserved. This is a
+documentation update, not a new experiment or independent reproduction of the
+reported 20 SITL runs. The missing original relay/bridge artifacts and the need
+for a raw-data audit are explicit in the manuscript and
+`docs/papers/SIMULATION_UPDATE_REVIEW.md` at the repository root.
+
+Observed locally on Linux, Python 3.12.14: 175 tests discovered, 168 passed and
+seven ROS-dependent tests skipped because `rclpy` is absent. The deterministic
+demo retained WAITING/HEALTHY/STALE/HEALTHY at 0.0/0.0/2.9/5.0 s, with 51
+accepted and zero rejected samples. Compileall and `git diff --check` passed.
+XeLaTeX built the review draft with resolved references and no overfull boxes;
+all ten rendered pages were visually inspected. The source-only arXiv packager
+was checked separately; these checks do not establish publication readiness.
+
+No new SITL, ROS graph, model-inference, radio, companion-computer, hardware or
+field experiment was run. Historical PDF files are unchanged. No archive,
+submission or physical-validation claim was added.
+
 ## Live impairment relay-log completeness (30 October 2026)
 
 On the pre-patch main commit `8bd9b73`, a synthetic relay log with matching
