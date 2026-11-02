@@ -129,10 +129,11 @@ def validate_report(report):
             else:
                 previous_n, previous_t = previous
                 expected_ratio = row["median_seconds"] / previous_t
+                if not math.isfinite(expected_ratio) or expected_ratio <= 0:
+                    raise ValueError("nonfinite or underflowed ratio")
                 expected_slope = math.log(expected_ratio) / math.log(
                     count / previous_n)
-                if (not math.isfinite(expected_ratio) or
-                        not math.isfinite(expected_slope) or
+                if (not math.isfinite(expected_slope) or
                         row.get("comparison_ratio") is None or
                         row.get("finite_size_log_slope") is None or
                         not math.isclose(row["comparison_ratio"], expected_ratio,
