@@ -2,6 +2,7 @@
 """H15 benchmark comparison tests; synthetic JSON only, no performance limits."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -152,10 +153,12 @@ class H15ComparisonTests(unittest.TestCase):
     def test_actual_h14_output_is_accepted_by_comparator(self):
         root = Path(__file__).resolve().parents[1]
         benchmark = root / "tools" / "benchmark_h14.py"
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
         completed = subprocess.run(
             [sys.executable, str(benchmark), "--sizes", "8", "16",
              "--repeats", "1", "--modes", "default"],
-            cwd=root, capture_output=True, text=True, timeout=30,
+            cwd=root, env=env, capture_output=True, text=True, timeout=30,
             check=True,
         )
         report = json.loads(completed.stdout)
