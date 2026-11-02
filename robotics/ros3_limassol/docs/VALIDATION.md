@@ -1,5 +1,35 @@
 # Validation record
 
+## PR #51 conflict-resolution verification (2 November 2026)
+
+Integrated main `80c92aa` into the incomplete-outage-log fix, preserving both
+31 October validation entries. On Linux with Python 3.12.14, 236 package tests
+ran: 229 passed and seven ROS-dependent tests skipped. The deterministic demo
+reported WAITING/HEALTHY/STALE/HEALTHY at 0.0/0.0/2.9/5.0 s, with 51 accepted
+and zero rejected samples. Compileall and `git diff --check` passed.
+
+This is local synthetic software verification. ROS graph, ArduPilot SITL,
+physical-link and hardware checks were not run for this resolution.
+
+## Outage comparison rejects incomplete logs (31 October 2026)
+
+On main `65da1ea`, a valid synthetic recording compared against only a relay
+origin and outage-start record incorrectly reported `all_expected_detected: true`.
+The missing gap became an unknown expectation and matched the absence of a
+detected transition. The comparison now refuses missing final summaries,
+incomplete or duplicate window records, non-object JSON, invalid numeric fields
+and inconsistent boundary timestamps. Completed zero-window controls remain valid.
+
+Local Linux check: 179 tests ran, 172 passed, seven ROS-dependent tests skipped.
+The deterministic demo retained WAITING/HEALTHY/STALE/HEALTHY at
+0.0/0.0/2.9/5.0 s, with 51 accepted and zero rejected samples. Compileall and
+`git diff --check` passed. Four regression tests cover truncation, missing
+boundaries, malformed/duplicate records, controls and recovery after run end.
+
+This is synthetic software evidence only. ROS graph tests, ArduPilot SITL,
+physical links and hardware were not run. Log consistency cannot establish
+that all planned outage windows or the full intended duration were captured.
+
 ## Paper simulation-update review (31 October 2026)
 
 The paper source adds a dated simulation-only section and three tables
