@@ -56,7 +56,7 @@ pseudo-random generator, with explicitly bounded sizes:
 - `1 <= robots <= 32`
 - `8 <= ticks <= 384`
 - `0 <= seed <= 2^31-1`
-- Up to 25,000 total robot-tick checks across requested policies
+- Up to 20,000 total robot-tick checks across requested policies
 - `max_sessions=4`, `late_window=16`, `stale_after_s=1.0`
 
 The generated event stream includes losses (no observation), messages
