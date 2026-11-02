@@ -33,7 +33,10 @@ def _invalid_constant(value):
 def _finite_positive(value, field):
     if type(value) not in (int, float):
         raise ValueError(f"{field} must be numeric, not boolean")
-    number = float(value)
+    try:
+        number = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise ValueError(f"{field} must be a finite positive number") from exc
     if not math.isfinite(number) or number <= 0:
         raise ValueError(f"{field} must be finite and positive")
     return number
@@ -92,9 +95,11 @@ def validate_report(report):
         key = (mode, count)
         if key in indexed:
             raise ValueError("duplicate mode/count measurement")
-        _finite_positive(row.get("median_seconds"), "median_seconds")
-        _finite_positive(row.get("seconds_per_observation"),
-                         "seconds_per_observation")
+        median = _finite_positive(row.get("median_seconds"), "median_seconds")
+        per_observation = _finite_positive(
+            row.get("seconds_per_observation"), "seconds_per_observation")
+        if not math.isclose(per_observation, median / count, rel_tol=1e-9):
+            raise ValueError("inconsistent seconds_per_observation")
         peak = row.get("peak_tracemalloc_bytes")
         if type(peak) is not int or peak < 0:
             raise ValueError("invalid peak_tracemalloc_bytes")
@@ -102,14 +107,41 @@ def validate_report(report):
         slope = row.get("finite_size_log_slope")
         if ratio is not None:
             _finite_positive(ratio, "comparison_ratio")
-        if slope is not None and (type(slope) not in (float, int) or
-                                  not math.isfinite(slope)):
-            raise ValueError("invalid finite-size logarithmic slope")
+        if slope is not None:
+            if type(slope) not in (float, int):
+                raise ValueError("invalid finite-size logarithmic slope")
+            try:
+                if not math.isfinite(slope):
+                    raise ValueError("nonfinite finite-size logarithmic slope")
+            except OverflowError as exc:
+                raise ValueError("invalid finite-size logarithmic slope") from exc
         indexed[key] = row
     for mode in modes:
+        previous = None
         for count in sizes:
             if (mode, count) not in indexed:
                 raise ValueError("incomplete measurement grid")
+            row = indexed[(mode, count)]
+            if previous is None:
+                if (row.get("comparison_ratio") is not None or
+                        row.get("finite_size_log_slope") is not None):
+                    raise ValueError("initial point must not declare a ratio/slope")
+            else:
+                previous_n, previous_t = previous
+                expected_ratio = row["median_seconds"] / previous_t
+                expected_slope = math.log(expected_ratio) / math.log(
+                    count / previous_n)
+                if (not math.isfinite(expected_ratio) or
+                        not math.isfinite(expected_slope) or
+                        row.get("comparison_ratio") is None or
+                        row.get("finite_size_log_slope") is None or
+                        not math.isclose(row["comparison_ratio"], expected_ratio,
+                                         rel_tol=1e-9) or
+                        not math.isclose(row["finite_size_log_slope"],
+                                         expected_slope, rel_tol=1e-9,
+                                         abs_tol=1e-12)):
+                    raise ValueError("inconsistent comparison ratio/slope")
+            previous = (count, row["median_seconds"])
     return indexed
 
 
@@ -142,13 +174,16 @@ def compare(base, candidate, base_rows, candidate_rows, base_digest, candidate_d
                 old = base_rows[(mode, n)]
                 new = candidate_rows[(mode, n)]
                 ratio = new["median_seconds"] / old["median_seconds"]
+                relative_change_pct = (ratio - 1.0) * 100.0
+                if not math.isfinite(ratio) or not math.isfinite(relative_change_pct):
+                    raise ValueError("comparison exceeds finite numeric range")
                 results.append({
                     "mode": mode,
                     "observations": n,
                     "baseline_median_seconds": old["median_seconds"],
                     "candidate_median_seconds": new["median_seconds"],
                     "candidate_over_baseline_time_ratio": ratio,
-                    "relative_wall_change_pct": (ratio - 1.0) * 100.0,
+                    "relative_wall_change_pct": relative_change_pct,
                     "baseline_peak_tracemalloc_bytes": old["peak_tracemalloc_bytes"],
                     "candidate_peak_tracemalloc_bytes": new["peak_tracemalloc_bytes"],
                 })
