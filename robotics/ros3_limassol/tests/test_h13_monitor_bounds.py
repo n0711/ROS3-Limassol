@@ -2,6 +2,10 @@
 """H13: bounded-state and multi-source regression tests; entirely synthetic."""
 
 import unittest
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 from ros3_limassol.monitor import LinkMonitor
 from ros3_limassol.recording import MAX_RECORD_BYTES, Observation
@@ -97,6 +101,20 @@ class H13MonitorBoundsTests(unittest.TestCase):
         self.assertEqual(events[-1]["event"], "summary")
         self.assertEqual(events[-1]["accepted"], count)
         self.assertEqual(events[-1]["rejected"], 0)
+
+
+    def test_benchmark_command_smoke(self):
+        package_root = Path(__file__).resolve().parents[1]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(package_root) + os.pathsep + env.get("PYTHONPATH", "")
+        process = subprocess.run(
+            [sys.executable, str(package_root / "tools" / "benchmark_h13.py"),
+             "--sizes", "8", "16", "--repeats", "1"],
+            cwd=package_root, env=env, capture_output=True, text=True,
+            timeout=30, check=True,
+        )
+        for mode in ("mode=default", "mode=late", "mode=replay"):
+            self.assertIn(mode, process.stdout)
 
 
 if __name__ == "__main__":
