@@ -7,6 +7,7 @@ No radio, USB, physical Arduino or ROS process is used.
 """
 
 import heapq
+import os
 import json
 import subprocess
 import sys
@@ -106,10 +107,12 @@ class H14OperationBoundTests(unittest.TestCase):
 
     def test_h14_json_benchmark_smoke(self):
         root = Path(__file__).resolve().parents[1]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
         completed = subprocess.run(
             [sys.executable, str(root / "tools" / "benchmark_h14.py"),
              "--sizes", "8", "16", "--repeats", "1"],
-            cwd=root, capture_output=True, text=True, check=True, timeout=30,
+            cwd=root, env=env, capture_output=True, text=True, check=True, timeout=30,
         )
         report = json.loads(completed.stdout)
         self.assertEqual(report["schema_version"], 1)
@@ -122,8 +125,10 @@ class H14OperationBoundTests(unittest.TestCase):
             self.assertIn(row["observations"], (8, 16))
             self.assertGreater(row["median_seconds"], 0)
             self.assertGreaterEqual(row["peak_tracemalloc_bytes"], 0)
-            self.assertEqual(row["comparison_ratio"], None if row["observations"] == 8
-                             else row["comparison_ratio"])
+            if row["observations"] == 8:
+                self.assertIsNone(row["comparison_ratio"])
+            else:
+                self.assertGreater(row["comparison_ratio"], 0)
         self.assertFalse(report["claims"]["big_o_proven_by_timing"])
         self.assertFalse(report["claims"]["physical_link_validated"])
 
