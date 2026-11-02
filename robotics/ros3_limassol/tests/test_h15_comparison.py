@@ -138,6 +138,35 @@ class H15ComparisonTests(unittest.TestCase):
                 self.assertNotIn("Traceback", completed.stderr)
                 self.assertEqual(completed.stdout, "")
 
+    def test_inconsistent_measurements_are_rejected(self):
+        for field in ("seconds_per_observation",
+                      "comparison_ratio", "finite_size_log_slope"):
+            candidate = fixture()
+            candidate["measurements"][1][field] = 7.0
+            with self.subTest(field=field):
+                result = invoke(fixture(), candidate)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("inconsistent", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_actual_h14_output_is_accepted_by_comparator(self):
+        root = Path(__file__).resolve().parents[1]
+        benchmark = root / "tools" / "benchmark_h14.py"
+        completed = subprocess.run(
+            [sys.executable, str(benchmark), "--sizes", "8", "16",
+             "--repeats", "1", "--modes", "default"],
+            cwd=root, capture_output=True, text=True, timeout=30,
+            check=True,
+        )
+        report = json.loads(completed.stdout)
+        compared = invoke(report, report)
+        self.assertEqual(compared.returncode, 0, compared.stderr)
+        result = json.loads(compared.stdout)
+        self.assertEqual(result["status"], "descriptive_only")
+        self.assertEqual(len(result["comparison"]), 2)
+        for point in result["comparison"]:
+            self.assertEqual(point["candidate_over_baseline_time_ratio"], 1.0)
+
     def test_report_size_limit(self):
         candidate = json.dumps(fixture()) + " " * 2_000_001
         completed = invoke(fixture(), candidate)
