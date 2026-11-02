@@ -76,8 +76,10 @@ class H20EvidenceBundleTests(unittest.TestCase):
             result = run_tool(CAPTURE, "--quick", "--output-dir", destination)
             self.assertEqual(result.returncode, 0, result.stderr)
             location = destination / "h18.json"
-            with location.open("ab") as stream:
-                stream.write(b"\n")
+            original = location.read_bytes()
+            self.assertTrue(original.startswith(b"{"))
+            # Preserve file length to exercise the SHA-256 check itself.
+            location.write_bytes(b"[" + original[1:])
             checked = run_tool(VERIFY, destination)
             self.assertEqual(checked.returncode, 2)
             self.assertEqual(checked.stdout, "")
