@@ -19,7 +19,7 @@ POLICIES = ("reject", "liveness")
 STALE_AFTER_S = 1.0
 MAX_SESSIONS = 4
 LATE_WINDOW = 16
-MAX_EVENT_BUDGET = 25000
+MAX_EVENT_BUDGET = 20000
 
 
 class Reference:
