@@ -65,7 +65,10 @@ def one_robot(index, robots, ticks, seed, policy):
     for tick in range(ticks):
         now = tick * 0.25
         # A deterministic six-tick gap crosses the 1.0 s stale threshold.
-        if 8 <= tick % 24 <= 13:
+        if tick == 0:
+            # Guarantee one accepted observation before the first blackout.
+            raw = make_packet(robot_id, "boot_0", 0)
+        elif 8 <= tick % 24 <= 13:
             raw = None
             silent += 1
         else:
