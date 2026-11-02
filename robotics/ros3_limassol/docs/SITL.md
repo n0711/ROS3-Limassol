@@ -1,5 +1,10 @@
 # ArduPilot SITL validation runbook (issue #28)
 
+For the proposed three-vehicle separate-link first slice of issue #41, see
+the [scientific XeLaTeX protocol](../../../docs/papers/ROS3_MultiVehicle_SITL_Protocol.tex).
+It is an unexecuted protocol, not a new validation result; shared-link testing
+and physical/field validation remain separate requirements.
+
 This is how to run the first validation of the receive-only MAVLink bridge
 against ArduPilot SITL with independently known outages. It was first run on
 27 October 2026 with ArduPilot `Rover-4.6.3`; the results are in

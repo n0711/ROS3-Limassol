@@ -7,7 +7,7 @@
 BoldFont=lmroman10-bold.otf,ItalicFont=lmroman10-italic.otf,
 BoldItalicFont=lmroman10-bolditalic.otf]
 \setmonofont[Scale=0.88]{lmmono10-regular.otf}
-\usepackage{amsmath,unicode-math,microtype,enumitem,titlesec,fancyhdr,xurl}
+\usepackage{amsmath,unicode-math,microtype,enumitem,titlesec,fancyhdr,xurl,booktabs}
 \setmathfont{latinmodern-math.otf}
 \usepackage[hidelinks,unicode]{hyperref}
 \hypersetup{pdftitle={ROS3-Limassol: An OpenPELAOS Prototype for Telemetry Liveness Monitoring},
@@ -25,7 +25,7 @@ pdfsubject={Technical report; initial idea credited to Christos Paparistodemou}}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small OpenPELAOS / ROS3-Limassol}
-\fancyhead[R]{\small Technical Report, v0.1.0}
+\fancyhead[R]{\small Update: 31 October 2026}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 \newcommand{\code}[1]{\texttt{#1}}
@@ -59,9 +59,19 @@ with a three-second blackout reproduces stale detection and recovery, accepting
 explicitly skipped because ROS~2 is unavailable in the authoring environment.
 The evidence establishes software behavior under a specified synthetic scenario.
 Real transport timing, field performance, and research novelty remain unestablished.
+An additional dated section summarizes subsequent synthetic and ArduPilot SITL
+evidence; the reported SITL aggregates await an independent raw-recording audit
+and make no physical-link or field claim.
 \end{abstract}
 {\small\textbf{Keywords:} ROS~2; field robotics; telemetry; liveness monitoring;
 intermittent connectivity; reproducibility.}
+
+\textbf{Scope of this review draft (31 October 2026).}
+Sections 1--7 preserve the original version-0.1.0 account, including its
+then-pending work. Section~\ref{sec:simulation-update} and
+Appendix~\ref{app:simulation-tables} describe later simulation evidence
+separately. This draft is for author review, not a submission or an assertion
+that the historical experiments have been independently reproduced.
 
 \section{Introduction}
 A robotics operator may continue to see an apparently valid position or battery
@@ -293,6 +303,168 @@ blackout reproduces stale detection and recovery, and 18 core test methods pass.
 A successful ROS transport run and a controlled distributed evaluation are the
 next evidence needed. This report records a preliminary implementation baseline.
 
+\section{Simulation evidence after version 0.1.0 (31 October 2026)}
+\label{sec:simulation-update}
+This section summarizes the repository's dated validation record, rather than
+replacing the historical experiment above. Its source snapshot is commit
+\code{65da1ea} \cite{simulation_record}.
+The virtual-time sweep and live ArduPilot software-in-the-loop (SITL) traffic
+are distinct evidence types. Here, ``live'' means execution of simulation
+processes on one host; it does not mean a physical vehicle or wireless link.
+The numerical results below are transcribed from that record, not newly
+measured or independently re-scored for this manuscript update.
+
+\subsection{Receive-only mapping and declared ground truth}
+The subsequent UDP MAVLink bridge maps \code{GLOBAL\_POSITION\_INT} position,
+heading and horizontal speed, together with the latest
+\code{SYS\_STATUS} battery percentage, to schema~v1. It withholds samples
+when the battery is unknown or too old, heading is unknown, the source ID
+does not match, or converted values violate the schema. Framing and mapping
+counters distinguish these cases from monitor rejections. The bridge has
+no encoder or send call; an automated test enforces that boundary. MAVProxy's
+stream requests are external to the measured receive-only bridge.
+Mapped sequence numbers follow arrival order, not the vehicle's source order.
+Consequently this path cannot evaluate rejection of reordered source samples.
+
+The seeded virtual-time impairment model declares fixed delay $\delta$,
+uniform added jitter in $[0,j]$, independent loss, Gilbert--Elliott burst loss,
+and outage windows $[u,v)$. Its documented matching rule associates an outage
+with a STALE episode beginning in
+\begin{equation}
+u\leq t_{\mathrm{STALE}}\leq v+\tau+\delta+j+h.
+\label{eq:outage-match}
+\end{equation}
+For example, with $[u,v)=[20,24)$ s, $\tau=1$ s, $\delta=0.1$ s,
+$j=0.3$ s and $h=0.1$ s, the matching interval is $[20,25.5]$ s.
+This is an experiment-scoring convention, not a physical fault diagnosis.
+Detection latency is measured from outage onset $u$; recovery latency is
+measured from outage end $v$. An outage beginning while already STALE is
+reported separately, without a new detection latency. Unmatched STALE
+episodes give the unexplained-STALE rate; in this model these are the
+false-alarm measure relative to declared outages.
+
+\subsection{Synthetic threshold sweep}
+Table~\ref{tab:synthetic-sweep} condenses the documented sweep: 20 seeds per
+row, 300 s per run, 10 Hz source, $h=0.05$ s, and two 3 s outages plus one
+0.8 s outage per run. The default strict sequence-order policy was used.
+The complete sweep and scenario-generation method remain in the pinned
+repository record \cite{simulation_record}.
+
+\begin{table}[htbp]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{35mm}rrrrrr@{}}
+\toprule
+Synthetic profile & $\tau$ (s) & 3 s: new+prior & 0.8 s & $\bar D$ (s) & $U$/h & Rej. \\
+\midrule
+Clean & 0.5 & $40+0$ & 20/20 & 0.40 & 0 & 0\% \\
+Clean & 1.0 & $40+0$ & 0/20 & 0.90 & 0 & 0\% \\
+Delay 0.1 s, jitter 0.3 s & 1.0 & $40+0$ & 3/20 & 1.19 & 0 & 25\% \\
+Independent loss 30\% & 1.0 & $40+0$ & 3/20 & 0.86 & 0 & 0\% \\
+Bursts, mean 1 s & 1.0 & $37+3$ & 6/20 & 0.83 & 240 & 0\% \\
+Bursts, mean 1 s & 2.0 & $38+2$ & 0/20 & 1.78 & 71 & 0\% \\
+\bottomrule
+\end{tabular}
+\caption{Reported synthetic sweep, not a network measurement.
+Of 40 long outages, ``new+prior'' separates newly detected from already-STALE
+outages; none are missed in these selected rows. $\bar D$ is mean detection
+latency from outage onset for newly detected long outages, $U$/h is
+unexplained STALE per hour, and Rej. is the out-of-order rejection percentage.
+Short-outage misses are the complement of the 0.8 s column.}
+\label{tab:synthetic-sweep}
+\end{table}
+
+In these scenarios, extending the timeout trades longer detection and more
+missed short outages for fewer burst-induced STALE episodes. Average loss
+alone does not characterize burst behavior. Delay and jitter increased
+mean onset-referenced detection from 0.90 to 1.19 s in the selected rows;
+this observed change is not a universal additive guarantee. Strict sequence
+ordering rejected about a quarter of jittered arrivals in that row. A later
+opt-in \code{late\_samples=liveness} policy was evaluated separately; these
+numbers must not be attributed to that policy or to the MAVLink bridge.
+
+\subsection{Clean-outage SITL observations and the conditional bound}
+The 27 October record describes stationary and moving ArduPilot
+\code{Rover-4.6.3} runs through MAVProxy~1.8.75 (pymavlink~2.4.50), a
+one-way outage relay and the bridge, all on loopback. ArduPilot was pinned
+to \code{3fc7011a7d3dc047cbb17d8bd98ee94577d144c6}. The bridge used
+$\tau=1.0$ s and a nominal evaluation period of 0.5 s. Four declared
+outages were matched to four STALE transitions; replay reproduced the
+recorded state sequences with maximum transition differences of 0.24 ms
+(stationary) and 1.1 ms (moving). Appendix~\ref{app:simulation-tables}
+retains the four individual observations.
+
+Using the last accepted arrival $r_\ast$ as the reference event, the reported
+interval $t_{\mathrm{detect}}-r_\ast$ was 1.206--1.257 s. Substitution of
+$\tau=1.0$ s and the assumed $h=0.5$ s in Equation~\eqref{eq:bound} gives
+$[1.0,1.5]$ s, which contains those observations. This is consistency in
+four observed outages, not a measured worst-case scheduler bound. A nominal
+timer period does not establish the maximum evaluation gap required by
+Equation~\eqref{eq:bound}. The onset-referenced detection intervals were
+instead 1.093--1.104 s; the two reference events must not be interchanged.
+
+Battery gating delayed recovery after a 5 s outage: a new position preceded
+a fresh battery report. Initial $(0,0)$ positions were accepted before the
+EKF origin existed, demonstrating that schema validity does not imply a
+valid position fix. The initial 1 Hz position stream also straddled the
+then-default 1 s threshold. The current bridge default is 3 s; historical
+results at 1 s are not results at that new default.
+
+\subsection{Reported live-impairment comparison and audit limits}
+Issue~\#33 is closed and its implementation, PR~\#38, is merged; the
+outline's ``results pending'' status is historical. The validation record
+reports 20 SITL runs: four profiles, five seeds each, 300 s per run,
+4 Hz position traffic, $\tau=1.0$ s and a 0.1 s bridge tick. After a
+30 s warm-up, position sample $k$ receives the same seeded fate as virtual
+sample $k$. Other datagrams share declared outages and burst state, but
+independent loss and jitter are applied to position samples only. This
+modeling choice does not emulate arbitrary per-datagram network loss.
+
+The comparison distinguishes live observations, a model driven by observed
+source timing, and a nominal periodic-source model. Table~\ref{tab:live-model}
+keeps that distinction. The record reports 23,975/23,999 nominal fate matches,
+with differences at outage boundaries. With observed source timing, reported
+recovery differences were within 3.5 ms and detection differences within
+0.087 s. The record reports reproduction of 39/39 loss and 59/59 burst
+unexplained-STALE events. In contrast, the nominal model predicted all five
+short burst-profile outages detected, against three observed. Source phase,
+rate offset and interval variation therefore matter within this setup.
+
+\textbf{These aggregates are not independently auditable from the repository
+alone.} The original 20 relay logs and bridge recordings are not committed,
+and this update establishes no public recording archive or DOI. The
+30 October comparison-tool fix rejects inconsistent or truncated relay
+logs; its regression tests did not reproduce the historical SITL runs.
+A final summary establishes internal log consistency, not complete scenario
+coverage. Neither the merged PR nor green software tests substitute for
+re-scoring the original experiment artifacts.
+
+Before treating the comparison as independently reproduced, recover and
+archive each original scenario (including seed), complete relay log with
+its terminal summary, bridge recording, JSON comparison report, exact
+software versions and hashes. Verify scenario identity, log consistency,
+scenario coverage and exit conditions with the current tools. Do not
+reconstruct missing summaries. If original artifacts are unavailable,
+retain the ``reported, not independently re-scored'' qualification and
+perform separately dated replacement runs rather than presenting them
+as the historical recordings.
+
+\subsection{Limits and publication boundary}
+These experiments cover one simulated vehicle on one host, loopback delivery
+through MAVProxy, and runs of at most 300 s. The impairment comparison covers
+one source rate and one timeout, with five seeds per profile; its rates
+retain sampling uncertainty. It does not validate radio propagation, a real
+network, a companion computer, physical vehicle dynamics, PX4, signed
+MAVLink, or multi-vehicle SITL. Physical-link and field validation remain
+future work. Arrival recency establishes neither measurement capture age
+nor navigation accuracy, vehicle safety, autonomy, or research novelty.
+
+Completion of \#33 permits discussion of reported simulation results, not
+broader claims. Submission of a simulation-only report need not wait for
+physical results, but remains subject to author review, the disclosed
+artifact audit gap, and the author's publication and licence decisions.
+No arXiv submission or prior arXiv version is established by this update.
+
 \section*{Idea attribution}
 The initial project idea is credited to \textbf{Christos Paparistodemou}, following
 the project initiator's attribution. His public ResearchGate profile is
@@ -326,6 +498,54 @@ skipped because \code{rclpy} was unavailable. These counts must not be confused
 with the original 18-test baseline. The repository validation record documents
 CI evidence separately. This preparation corrects artifact availability and
 font portability; it does not establish field performance or new novelty.
+
+\clearpage
+\appendix
+\section{Reported SITL observations}
+\label{app:simulation-tables}
+These tables transcribe the 27 October validation record at the pinned
+source snapshot \cite{simulation_record}; they are not new measurements.
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Run & Outage (s) & $D_{\mathrm{arrival}}$ (s) & $D_{\mathrm{onset}}$ (s) & $R$ (s) \\
+\midrule
+Stationary & 30--35 & 1.257 & 1.103 & 0.324 \\
+Stationary & 70--72 & 1.206 & 1.104 & 0.083 \\
+Moving & 30--35 & 1.239 & 1.093 & 0.324 \\
+Moving & 70--72 & 1.232 & 1.093 & 0.085 \\
+\bottomrule
+\end{tabular}
+\caption{Clean-outage SITL: $D_{\mathrm{arrival}}$ is time since the last
+accepted arrival; $D_{\mathrm{onset}}$ is time since scheduled outage onset;
+$R$ is time from traffic resumption to HEALTHY. All four outages were detected.}
+\label{tab:clean-sitl}
+\end{table}
+
+\begin{table}[htbp]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{28mm}rrrr@{}}
+\toprule
+Profile & $\bar D$ (s) & $\bar R$ (s) & Short detected & $U$/h \\
+\midrule
+Clean & 0.81/0.80/0.80 & 0.15/0.15/0.00 & 5/5/5 & 0/0/0 \\
+Delay 0.1 s, jitter 0.3 s & 1.09/1.09/1.07 & 0.38/0.38/0.24 & 5/5/5 & 0/0/0 \\
+Independent loss 30\% & 0.65/0.62/0.60 & 0.22/0.22/0.05 & 5/5/5 & 94/94/79 \\
+Bursts, mean 1 s & 0.79/0.80/0.77 & 0.11/0.11/0.25 & 3/3/5 & 142/142/139 \\
+\bottomrule
+\end{tabular}
+\caption{Reported 20-run comparison. Each triplet is live / model with
+observed source timing / nominal periodic model, in that order.
+$\bar D$ and $\bar R$ concern the two 3 s outages per run; detection is
+onset-referenced. All three methods report 10/10 long outages per profile.
+Short counts are out of five 0.8 s outages; $U$/h is unexplained STALE per hour.
+The nominal model uses \code{late\_samples=liveness}; the bridge numbers
+samples in arrival order. Raw per-run artifacts remain unavailable here.}
+\label{tab:live-model}
+\end{table}
 
 \begin{thebibliography}{9}\small\raggedright
 \urlstyle{same}
@@ -366,5 +586,13 @@ Accessed 23 October 2026.
 T.~Bray, Ed. \emph{The JavaScript Object Notation (JSON) Data Interchange Format}.
 RFC~8259, December 2017.
 \url{https://www.rfc-editor.org/rfc/rfc8259.html}.
+\bibitem{simulation_record}
+C.~Nadiotis. \emph{ROS3-Limassol repository validation and impairment records}.
+Snapshot \code{65da1ea17d2a1de68e24a8f6e3120bbfd2fd1e11}, inspected
+31 October 2026. Files: \code{robotics/ros3\_limassol/docs/VALIDATION.md},
+\code{IMPAIRMENT.md}, \code{MAVLINK.md} and \code{SITL.md}; issue~\#33,
+merged PR~\#38 and paper outline~\#42. Reported simulation results;
+no independently re-scored raw-run archive established in this draft.
+\url{https://github.com/n0711/ROS3-Limassol/tree/65da1ea17d2a1de68e24a8f6e3120bbfd2fd1e11/robotics/ros3_limassol/docs}.
 \end{thebibliography}
 \end{document}

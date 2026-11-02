@@ -1,5 +1,16 @@
 # Validation record
 
+## PR #51 conflict-resolution verification (2 November 2026)
+
+Integrated main `80c92aa` into the incomplete-outage-log fix, preserving both
+31 October validation entries. On Linux with Python 3.12.14, 236 package tests
+ran: 229 passed and seven ROS-dependent tests skipped. The deterministic demo
+reported WAITING/HEALTHY/STALE/HEALTHY at 0.0/0.0/2.9/5.0 s, with 51 accepted
+and zero rejected samples. Compileall and `git diff --check` passed.
+
+This is local synthetic software verification. ROS graph, ArduPilot SITL,
+physical-link and hardware checks were not run for this resolution.
+
 ## Outage comparison rejects incomplete logs (31 October 2026)
 
 On main `65da1ea`, a valid synthetic recording compared against only a relay
@@ -18,6 +29,28 @@ boundaries, malformed/duplicate records, controls and recovery after run end.
 This is synthetic software evidence only. ROS graph tests, ArduPilot SITL,
 physical links and hardware were not run. Log consistency cannot establish
 that all planned outage windows or the full intended duration were captured.
+
+## Paper simulation-update review (31 October 2026)
+
+The paper source adds a dated simulation-only section and three tables
+transcribed from the historical records below and `IMPAIRMENT.md` at commit
+`65da1ea`. The original version-0.1.0 sections 1--7 are preserved. This is a
+documentation update, not a new experiment or independent reproduction of the
+reported 20 SITL runs. The missing original relay/bridge artifacts and the need
+for a raw-data audit are explicit in the manuscript and
+`docs/papers/SIMULATION_UPDATE_REVIEW.md` at the repository root.
+
+Observed locally on Linux, Python 3.12.14: 175 tests discovered, 168 passed and
+seven ROS-dependent tests skipped because `rclpy` is absent. The deterministic
+demo retained WAITING/HEALTHY/STALE/HEALTHY at 0.0/0.0/2.9/5.0 s, with 51
+accepted and zero rejected samples. Compileall and `git diff --check` passed.
+XeLaTeX built the review draft with resolved references and no overfull boxes;
+all ten rendered pages were visually inspected. The source-only arXiv packager
+was checked separately; these checks do not establish publication readiness.
+
+No new SITL, ROS graph, model-inference, radio, companion-computer, hardware or
+field experiment was run. Historical PDF files are unchanged. No archive,
+submission or physical-validation claim was added.
 
 ## Live impairment relay-log completeness (30 October 2026)
 

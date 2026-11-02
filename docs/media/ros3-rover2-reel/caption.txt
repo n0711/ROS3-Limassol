@@ -1,0 +1,16 @@
+Every group project has a Rover 2 💀
+
+One disconnects. The other two refuse to make it their personality.
+
+We turned that into a four-page robotics validation protocol. Because apparently “not my outage” needs scientific documentation.
+
+ROS3-Limassol: a planned three-rover SITL test. Interrupt Rover 2’s telemetry path, check that the others stay independent, then compare live observations with replay.
+
+The protocol and its PDF are now on GitHub:
+github.com/n0711/ROS3-Limassol
+
+Animated concept — not test footage, completed multi-vehicle validation or field results.
+
+Send this to your team’s Rover 2. You know who it is.
+
+#EngineeringMemes #Robotics #RobotMemes #SoftwareEngineering #PELAOSTech
