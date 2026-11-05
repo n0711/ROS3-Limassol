@@ -26,6 +26,7 @@ command-line tool. The documents below go deeper.
 | Document | Read it to… |
 | --- | --- |
 | [IMPAIRMENT.md](IMPAIRMENT.md) | Run the seeded link-impairment model, read its scores, and choose a timeout |
+| [BER.md](BER.md) | Compare synthetic raw channel BER, residual BER after Hamming FEC, CRC and wire overhead |
 | [SITL.md](SITL.md) | Reproduce the ArduPilot SITL check with scripted outages |
 | [VALIDATION.md](VALIDATION.md) | See what has been run, with results and what each does not establish (newest first) |
 | [ROADMAP.md](ROADMAP.md) | See what is planned next |
