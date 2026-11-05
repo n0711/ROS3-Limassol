@@ -19,9 +19,13 @@ single pull request.
 
 ## Hard boundaries
 
-- **Receive-only.** Never add code that sends vehicle commands, MAVLink
-  messages, heartbeats, stream requests or actuation of any kind. Existing tests
-  enforce this; do not weaken them.
+- **Transport direction is not a project-wide restriction.** Bidirectional
+  communication, acknowledgements, retransmissions, stream negotiation and
+  separately authorized control interfaces may be developed as focused,
+  explicitly configured features. Preserve existing behavior and its tests
+  until the relevant implementation changes. Any new transmit capability
+  requires protocol validation, source authorization, rate/resource bounds,
+  explicit activation and tests. Link `HEALTHY` never authorizes actuation.
 - **`HEALTHY` means receiver arrival recency only.** Never describe it as vehicle
   safety, sensor freshness, link quality or navigation accuracy.
 - **LLM/VLM output is unverified diagnostic text.** It must stay read-only and
@@ -73,10 +77,12 @@ The plan and its maintainer decisions are tracked in issue #36. In order:
 
 1. Validate the impairment model against live SITL traffic (#33).
 2. Multiple robots: ROS 2 namespaces (#34), then multi-vehicle SITL.
-3. MAVLink 2 signature verification in the bridge, once the maintainer approves
-   the design. It is required before any radio link.
+3. MAVLink 2 signature verification and source authorization before adding
+   untrusted radio transport or command-capable communication.
 4. Physical link evaluation: companion computer and marine telemetry link
    (roadmap step 4). This needs the maintainer's hardware.
+5. Optional bidirectional communication, measured residual BER and packet
+   delivery, plus separately reviewed control-interface requirements.
 
 Prefer these over new LLM/VLM features. Ask the maintainer before starting work
 outside this list, or before any change to licences, the telemetry schema
