@@ -8,6 +8,17 @@ experimental Rust core implements separate validation/replay utilities; it is
 not wired into the Python ROS 2 nodes. This project is not an official ROS
 version or a ROS 2 replacement.
 
+## Transport direction and scope
+
+ROS3-Limassol is **not permanently restricted to receive-only operation**.
+The current telemetry monitor, UDP MAVLink bridge and offline tools remain
+receiver-side implementations. Future components may add bidirectional
+transport, feedback/ACKs, retransmission, and independently authorized
+control interfaces. Such features must be explicitly enabled and evaluated
+separately; no present test establishes outgoing MAVLink or vehicle control.
+The `HEALTHY` state continues to mean arrival recency only and cannot authorize
+commands or infer vehicle safety.
+
 ## What each component tells you
 
 - **Python demo:** tests liveness changes using synthetic messages and a virtual
@@ -25,7 +36,7 @@ version or a ROS 2 replacement.
   those signed envelopes.
 - **MAVLink bridge:** receives MAVLink over UDP from one system, maps
   `GLOBAL_POSITION_INT` and `SYS_STATUS` to schema-v1 samples, and feeds the
-  same monitor and recorder. It never sends anything, and it numbers samples in
+  same monitor and recorder. The current adapter does not transmit frames and numbers samples in
   arrival order. It shows whether the autopilot's position messages reach this
   receiver, not whether the vehicle is healthy. See [MAVLINK.md](MAVLINK.md).
 - **Impairment experiments:** run the same monitor against a seeded synthetic

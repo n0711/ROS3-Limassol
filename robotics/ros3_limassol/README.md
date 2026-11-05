@@ -5,7 +5,7 @@ Nadiotis; initial project idea credited to Christos Paparistodemou. [Apache-2.0]
 
 **Start here:** Choose **Standalone Python** if you want a quick synthetic demonstration
 without ROS. Choose **ROS 2 Humble** or **ROS 2 Jazzy** if you want ROS topics,
-a simulator publisher or a receive-only recorder. These ROS 2 steps require a
+a simulator publisher or a telemetry recorder. These ROS 2 steps require a
 separately installed ROS distribution; this project is not an official ROS release.
 
 **Directory conventions:** Standalone `python -m` commands below run from this
@@ -18,7 +18,7 @@ same ROS distribution and workspace in each terminal.
 
 - **Core, no ROS needed:** [Standalone Python](#standalone-python) ·
   [Offline evidence report](#offline-evidence-report) ·
-  [MAVLink input](#receive-only-mavlink-input-experimental) ·
+  [MAVLink input](#mavlink-input-experimental) ·
   [Link-impairment experiments](#link-impairment-experiments)
 - **ROS 2:** [Humble](#ros-2-humble-on-ubuntu-2204) ·
   [Jazzy](#ros-2-jazzy-on-ubuntu-2404) ·
@@ -66,7 +66,7 @@ the exact input bytes; it does not authenticate the recording or establish its
 provenance. A failed read emits no JSON report. See the
 [evidence specification](docs/EVIDENCE.md) for interpretation and limitations.
 
-## Receive-only MAVLink input (experimental)
+## MAVLink input (experimental)
 
 Observe a MAVLink sender over UDP **without ROS or pymavlink**:
 
@@ -77,8 +77,9 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jso
 `GLOBAL_POSITION_INT` and `SYS_STATUS` from one system ID are mapped explicitly to
 telemetry schema v1, so the recording replays and exports evidence like any
 other; pass the bridge's `--stale-after` (default 3 s) to `replay` and
-`evidence` so they match. The bridge never sends MAVLink; the sender must
-already stream to it.
+`evidence` so they match. The current bridge does not transmit MAVLink, so the
+sender must already stream to it. This implementation detail is not a ban on
+future bidirectional ROS3 components.
 See the [MAVLink mapping and limits](docs/MAVLINK.md).
 
 ## Link-impairment experiments
