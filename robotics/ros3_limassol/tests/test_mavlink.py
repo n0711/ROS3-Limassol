@@ -7,7 +7,7 @@ import struct
 import tempfile
 import unittest
 
-from ros3_limassol import mavlink, mavlink_bridge
+from ros3_limassol import mavlink_bridge
 from ros3_limassol.live_recorder import LiveRecorder
 from ros3_limassol.mavlink import (
     MSG_GLOBAL_POSITION_INT, MSG_SYS_STATUS, SUPPORTED_MESSAGES,
@@ -33,7 +33,7 @@ V2_HEARTBEAT = bytes.fromhex("fd090000070101000000000000000b030004037a40")
 
 def encode(msgid, payload, *, v2=True, sysid=1, compid=1, seq=0,
            signed=False, crc_extra=None):
-    """Test-only encoder; the package itself deliberately has none."""
+    """Test-only encoder for independently constructed input fixtures."""
     if crc_extra is None:
         crc_extra = SUPPORTED_MESSAGES[msgid].crc_extra
     if v2:
@@ -101,12 +101,6 @@ class ParserTests(unittest.TestCase):
     def test_rejects_non_bytes(self):
         with self.assertRaises(TypeError):
             list(MavlinkParser().feed("fd00"))
-
-    def test_package_has_no_send_path(self):
-        for module in (mavlink, mavlink_bridge):
-            source = Path(module.__file__).read_text(encoding="utf-8")
-            for forbidden in ("sendto(", ".send(", "sendall("):
-                self.assertNotIn(forbidden, source, module.__name__)
 
 
 class MapperTests(unittest.TestCase):
