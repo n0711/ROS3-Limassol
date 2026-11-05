@@ -73,6 +73,15 @@ tracked in [GitHub issue #36](https://github.com/n0711/ROS3-Limassol/issues/36).
    Next: MAVLink 2 signature verification before any radio link, and possibly
    `GPS_RAW_INT` fix quality. PX4 SITL is not yet covered.
 4. Evaluate a companion computer and a physical marine-robotics telemetry link.
+5. Explore an opt-in bidirectional transport layer. Compare uncoded and
+   error-corrected residual BER, frame-error rate, packet delivery,
+   retransmission overhead and latency using reproducible synthetic inputs,
+   then independently evaluate the results on supported hardware.
+6. Specify separately authorized control interfaces, if needed, with explicit
+   activation, end-to-end validation and independent vehicle-side safety gating.
 
-Vehicle commands and autonomy are outside the current prototype. Arrival liveness
-and measurement capture freshness remain distinct.
+Current bridge and monitor implementations do not send vehicle commands, but
+bidirectional communication and separately engineered control are **allowed
+future directions**, not prohibited architecture. Neither has been validated
+in this repository. Arrival liveness and measurement capture freshness remain
+distinct.
