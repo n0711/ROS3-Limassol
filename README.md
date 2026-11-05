@@ -58,6 +58,7 @@ dropout arrives at 1.9 s, so with the 1 s timeout the monitor reports `STALE` at
 | Use it with ROS 2 Humble or Jazzy | [ROS package guide](robotics/ros3_limassol/README.md) |
 | Watch a MAVLink autopilot without ROS | [MAVLink guide](robotics/ros3_limassol/docs/MAVLINK.md) |
 | Test a timeout against delay, jitter and loss | [Link-impairment experiments](robotics/ros3_limassol/docs/IMPAIRMENT.md) |
+| Compare uncoded and FEC-corrected residual BER | [Offline BER experiment](robotics/ros3_limassol/docs/BER.md) |
 | Reproduce the ArduPilot simulation check | [SITL runbook](robotics/ros3_limassol/docs/SITL.md) |
 | Know what has and has not been validated | [Validation record](robotics/ros3_limassol/docs/VALIDATION.md) |
 | Understand the design | [Architecture](robotics/ros3_limassol/docs/ARCHITECTURE.md) |
