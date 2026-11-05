@@ -23,7 +23,9 @@ three states:
 
 **`HEALTHY` means only that valid telemetry arrived recently.** It says nothing
 about vehicle safety, sensor freshness, navigation accuracy, network latency or
-delivery reliability. ROS3-Limassol never sends commands to a vehicle.
+delivery reliability. The currently implemented monitor and MAVLink bridge do
+not issue vehicle commands. This is a current capability statement, **not** a
+project-wide ban on future bidirectional communication.
 
 ## Quick start (no ROS needed)
 
@@ -69,7 +71,7 @@ dropout arrives at 1.9 s, so with the 1 s timeout the monitor reports `STALE` at
 | --- | --- | --- |
 | Monitor, telemetry validation, recording, replay, evidence (Python) | Unit tests in CI on Ubuntu (Python 3.10, 3.12) and Windows (3.12) | Timing over a real network |
 | ROS 2 adapter: simulator, monitor, recorder | DDS graph tests in the Humble and Jazzy CI jobs | Multi-host or field DDS |
-| Receive-only MAVLink bridge | Independently encoded frames; ArduPilot Rover 4.6.3 SITL on one host with scripted outages | PX4, radio links, companion computers, signed MAVLink |
+| MAVLink input bridge (currently receiver-side) | Independently encoded frames; ArduPilot Rover 4.6.3 SITL on one host with scripted outages | Transmit/ACK path, PX4, radio links, companion computers, signed MAVLink |
 | Link-impairment experiments | A seeded, virtual-time model scored against declared outages | Any real network |
 | Rust core | Format, lint and tests in CI | Use by the ROS 2 nodes |
 | LLM, VLM, SimReady and multimodal extensions | Mocked models and synthetic inputs | Model accuracy, real cameras, synchronised sensors |
@@ -125,8 +127,9 @@ python -m ros3_limassol.mavlink_bridge --listen 127.0.0.1:14550 --record run.jso
 - **Input:** the bridge maps `GLOBAL_POSITION_INT` and `SYS_STATUS` from one
   MAVLink system onto the telemetry schema, so its recordings replay like any
   other.
-- **Receive-only:** it **never sends MAVLink**: no heartbeats, stream requests
-  or commands. A ground station or router must already stream to it.
+- **Current behavior:** this bridge only receives MAVLink, so a ground
+  station or router must already stream to it. Future bidirectional transport
+  is permitted but not implemented by this command.
 - **Timeout:** the bridge's `--stale-after` defaults to 3 s, three intervals of
   ArduPilot's default 1 Hz position stream. Choose it for your vehicle's
   position rate, and pass the same value to replay and evidence, whose default
@@ -159,8 +162,9 @@ adapter does not accept its signed envelopes. See the
 
 ## Experimental extensions
 
-These are optional and read-only. None of them can command a vehicle or change
-`HEALTHY` and `STALE`.
+The extensions listed below currently provide observation and diagnostics only.
+They do not command vehicles or change `HEALTHY` and `STALE`. This does not
+exclude separately engineered future bidirectional or control interfaces.
 
 | Extension | What it does | Limits | Guide |
 | --- | --- | --- | --- |
