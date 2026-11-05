@@ -1,4 +1,4 @@
-# Receive-only MAVLink adapter (experimental)
+# MAVLink input adapter (experimental)
 
 `ros3_limassol.mavlink_bridge` listens for MAVLink on a UDP socket, maps two
 messages onto [telemetry schema v1](TELEMETRY.md) and feeds the existing arrival
@@ -20,11 +20,20 @@ The bridge prints one JSON line per link-state change and a summary on exit
 (Ctrl+C or `--duration`). The summary includes MAVLink framing counters and
 mapping counters so withheld samples are visible.
 
-## Receive-only boundary
+## Current behavior and future direction
 
-The bridge binds a socket and only receives. The package contains no MAVLink
-encoder and no send call, and a test checks this. Consequently it never sends
-heartbeats, requests data streams, or sends parameters, missions or commands.
+The existing `mavlink_bridge` binds a UDP socket and processes inbound frames.
+It currently has no production MAVLink encoder or outbound transport, so this
+specific command does not send heartbeats, request streams or issue commands.
+That is an **implementation fact**, not a permanent receive-only design rule.
+Tests of current parsing and UDP receive behavior remain in place; a blanket
+source-code ban on transmit methods is not an architectural requirement.
+
+A future optional bidirectional component may support acknowledgements,
+retransmissions and stream negotiation. A separately reviewed control interface
+would need explicit activation, authenticated and authorized sources, bounded
+traffic and independent vehicle-side safety checks. None of those send paths
+are present or validated today.
 
 The sender must already push MAVLink to the bridge's address. ArduPilot's
 `sim_vehicle.py` already gives MAVProxy `--out 127.0.0.1:14550`, the bridge's
