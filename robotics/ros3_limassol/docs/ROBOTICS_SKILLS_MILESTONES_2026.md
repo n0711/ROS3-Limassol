@@ -50,8 +50,10 @@ not replayed in this isolated workspace.
   tools identified, not rerun in this workspace.
 - [x] **H21 focused local check:** 13 unittest cases passed and compileall
   succeeded under Python 3.13.5.
-- [ ] **H21 repository gate:** full package suite, GitHub CI matrix
-  (Python 3.10/3.12, ROS Humble/Jazzy) and wheel verification.
+- [x] **H21 repository CI gate:** Python 3.10/3.12 (Linux), Python 3.12
+  (Windows), wheel verification, ROS Humble/Jazzy, and Rust core passed.
+  See [ROS3-Limassol run 42403210258](https://github.com/n0711/ROS3-Limassol/actions/runs/42403210258)
+  and [Rust run 42403210271](https://github.com/n0711/ROS3-Limassol/actions/runs/42403210271). Human review pending.
 - [ ] **H22 measurement gate:** replay paired timestamps from independent
   calibrated capture/receiver devices and report interval violations.
 - [ ] **H33:** separate SITL, HIL, and field trials with raw provenance.
@@ -75,9 +77,10 @@ not replayed in this isolated workspace.
 - **Tests:** `tests/test_clock_bounds.py`, 13 focused tests passed locally;
   Python compileall passed locally.
 - **Explanation:** `docs/CLOCK_ALIGNMENT_H21.md`.
-- **Not run / not established:** full repository suite, ROS graph or
-  Humble/Jazzy CI, PTP/PPS, hardware timestamps, sensor driver delay,
-  physical radio, field trial, localization or vehicle control.
+- **GitHub CI passed:** core (Linux/Windows), wheel, Humble and Jazzy jobs,
+  plus separate Rust workflow on the H21 PR head at first CI run.
+- **Not run / not established:** independent PTP/PPS, hardware timestamps,
+  real sensor delay, radio, field, localization or vehicle control.
 - **Decision:** stay offline/read-only pending independent clock evidence.
 
 For historical receiver tests and earlier synthetic work, see existing
