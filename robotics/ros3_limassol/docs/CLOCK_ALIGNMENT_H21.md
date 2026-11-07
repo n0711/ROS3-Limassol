@@ -1,8 +1,11 @@
 # H21: offline source-to-receiver clock bounds
 
 **Status: 13 focused unittest checks passed in a Python 3.13.5 local staging
-environment on 2026-11-07.** Full repository and ROS Humble/Jazzy CI remain
-unverified for this PR.
+environment on 2026-11-07.** GitHub core and ROS Humble/Jazzy CI also passed
+([run 42403210258](https://github.com/n0711/ROS3-Limassol/actions/runs/42403210258));
+the separate Rust workflow passed
+([run 42403210271](https://github.com/n0711/ROS3-Limassol/actions/runs/42403210271)).
+Hardware verification remains unavailable.
 
 The read-only `ros3_limassol.clock_bounds` module propagates an *externally
 declared* clock offset and its uncertainty to a conditional range of ages from
