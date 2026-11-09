@@ -19,7 +19,15 @@ command-line tool. The documents below go deeper.
 | Document | Read it to… |
 | --- | --- |
 | [Package guide: ROS 2](../README.md#ros-2-humble-on-ubuntu-2204) | Build for Humble or Jazzy, launch the simulator and monitor, and record a live stream |
-| [MAVLINK.md](MAVLINK.md) | Use the receive-only MAVLink bridge: its message mapping, choosing `--stale-after`, and its limits |
+| [MAVLINK.md](MAVLINK.md) | Use the current MAVLink input bridge: its message mapping, choosing `--stale-after`, and its limits |
+
+## Transport direction
+
+The present MAVLink bridge is receiver-side, but that is not a repository-wide
+constraint. Optional bidirectional communication and independently authorized
+control paths are future work, not implemented features. See
+[architecture](ARCHITECTURE.md#transport-direction-and-scope) and
+[roadmap](ROADMAP.md#next-steps).
 
 ## Experiments and evidence
 
