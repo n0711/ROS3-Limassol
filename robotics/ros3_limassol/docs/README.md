@@ -34,6 +34,9 @@ control paths are future work, not implemented features. See
 | Document | Read it to… |
 | --- | --- |
 | [IMPAIRMENT.md](IMPAIRMENT.md) | Run the seeded link-impairment model, read its scores, and choose a timeout |
+| [BER.md](BER.md) | Compare synthetic raw channel BER, residual BER after Hamming FEC, CRC and wire overhead |
+| [CLOCK_ALIGNMENT_H21.md](CLOCK_ALIGNMENT_H21.md) | Examine conditional capture-age intervals from independently supplied clock bounds |
+| [ROBOTICS_SKILLS_MILESTONES_2026.md](ROBOTICS_SKILLS_MILESTONES_2026.md) | Track six-domain engineering milestones, local tests and outstanding validation |
 | [SITL.md](SITL.md) | Reproduce the ArduPilot SITL check with scripted outages |
 | [VALIDATION.md](VALIDATION.md) | See what has been run, with results and what each does not establish (newest first) |
 | [ROADMAP.md](ROADMAP.md) | See what is planned next |

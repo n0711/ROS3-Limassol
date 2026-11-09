@@ -19,7 +19,8 @@ same ROS distribution and workspace in each terminal.
 - **Core, no ROS needed:** [Standalone Python](#standalone-python) ·
   [Offline evidence report](#offline-evidence-report) ·
   [MAVLink input](#mavlink-input-experimental) ·
-  [Link-impairment experiments](#link-impairment-experiments)
+  [Link-impairment experiments](#link-impairment-experiments) ·
+  [BER and FEC experiment](#offline-ber-and-fec-experiment)
 - **ROS 2:** [Humble](#ros-2-humble-on-ubuntu-2204) ·
   [Jazzy](#ros-2-jazzy-on-ubuntu-2404) ·
   [Record a live ROS stream](#record-a-live-ros-stream)
@@ -95,6 +96,20 @@ python -m ros3_limassol.impairment docs/impairment-example.json --record-dir run
 The report gives detection and recovery latency per outage, missed outages and
 STALE episodes no outage explains; recordings replay with the standard tools.
 See the [impairment guide](docs/IMPAIRMENT.md), including a threshold sweep.
+
+## Offline BER and FEC experiment
+
+Compare residual payload BER using uncoded and Hamming(7,4) frames with
+synthetic independent bit flips and CRC-32 integrity checks. No ROS, hardware
+or MAVLink transport is needed:
+
+```sh
+python -m ros3_limassol.ber --probability 0.01 --payload-bytes 16 --frames 256 --seed 7
+```
+
+The report separates raw channel BER, post-decoder residual BER, frame errors,
+CRC acceptance and wire overhead. This cannot establish a physical-radio BER
+reduction. See the [BER experiment guide](docs/BER.md).
 
 ## Optional read-only offline analytics
 
