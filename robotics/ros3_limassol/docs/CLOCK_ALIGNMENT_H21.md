@@ -88,3 +88,42 @@ constructed timestamps, **not real-device or measured synchronization results**.
 target camera/companion, bound measurement error and drift, check repeated
 held-out timestamp pairs against that bound, and report measured failure cases.
 Do not mark synchronization verified without this evidence.
+
+## H22 acquisition and review procedure (pending hardware)
+
+1. Record the camera and receiver models, firmware, driver, timestamp API,
+   clock IDs, tick units, resolution and timestamp origin for each session.
+   Identify whether the camera stamps exposure start, end or driver delivery.
+   Specify the physical event whose age is being tested.
+2. Use a common observable edge independently latched in both clock domains.
+   Record the source and receiver edge timestamps, a shared edge ID, and the
+   measured or specified bounds on differential path delay, latch latency and
+   quantization. If either clock cannot observe the reference, stop the run.
+   A camera timestamp paired with its arrival callback includes transport
+   delay and cannot serve as this reference.
+3. Start at least three independent acquisition sessions. Within each, label
+   calibration and later held-out edge IDs before fitting. Use the first
+   calibration edge difference (receiver minus source) as the offset at the
+   reference epoch. Declare initial uncertainty, drift bound, validity duration
+   and their evidence before examining held-out edges. Keep the operating
+   conditions and duration with the results.
+4. For each held-out edge compute the reference difference and its independent
+   uncertainty u (seconds). At elapsed time t, compare the reference interval
+   [difference - u, difference + u] with the H21 offset interval
+   [theta - epsilon(t), theta + epsilon(t)]. Record full containment,
+   disjoint intervals (a definite violation), or partial overlap (unresolved).
+   Report per-session counts, largest excess beyond the declared interval,
+   and the offending edge IDs. Keep all observations, including failures.
+5. A clock-edge result alone covers only the clock mapping. To claim
+   exposure-to-callback age, also bound the displacement between the camera
+   stamp and the declared exposure event, plus any conversion to the callback
+   clock. Document where buffering occurs relative to those timestamps.
+   Leave unsupported capture paths out of the claim.
+6. Mark the session unusable for age inference on missing calibration,
+   unknown clock IDs, a clock reset, invalid bounds or expiry. The acquisition
+   caller must check validity before supplying H21 calibration. Link HEALTHY
+   describes receiver arrival recency only.
+7. Archive raw edge pairs, split labels, calibration metadata, uncertainty
+   budget, analysis script and per-edge output. Record the analysis command,
+   repository revision and SHA-256 checksums of the archived inputs and script.
+   Submit the evidence for independent review under issue #77.
