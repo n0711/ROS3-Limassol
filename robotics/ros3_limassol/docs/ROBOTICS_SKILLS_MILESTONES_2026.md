@@ -14,7 +14,9 @@ not replayed in this isolated workspace.
   CLI, 13 focused local tests and documentation.
 - [ ] **H22:** measure independent timestamp and offset uncertainty on a
   real camera/companion device, including provenance and clock drift.
-- [ ] **H23:** bounded multisensor quality evidence, calibration,
+- [x] **H23 software:** [offline multisensor timing report](MULTISENSOR_QUALITY_H23.md),
+  tested with synthetic observations and a missing sensor.
+- [ ] **H23 independent evidence:** bounded multisensor quality evidence, calibration,
   timestamps, uncertainty and missing-data handling.
 
 ## Domain 2 - Localization and state estimation
