@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "source": "synthetic",
+  "calibration": {
+    "gnss_lever_arm_flu_m": [
+      0,
+      0,
+      0
+    ],
+    "imu_alignment": "axes_aligned_with_base"
+  },
+  "streams": {
+    "gnss": [
+      {
+        "t_ms": 0,
+        "antenna_enu_m": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "imu": [
+      {
+        "t_ms": 0,
+        "specific_force_flu_m_s2": [
+          0,
+          0,
+          9.81
+        ],
+        "angular_rate_flu_rad_s": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "odometry": [
+      {
+        "t_ms": 0,
+        "base_enu_m": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "t_ms": 2000,
+        "base_enu_m": [
+          3,
+          0,
+          0
+        ]
+      }
+    ],
+    "reference": [
+      {
+        "t_ms": 0,
+        "base_enu_m": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "t_ms": 1000,
+        "base_enu_m": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "t_ms": 2000,
+        "base_enu_m": [
+          2,
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

@@ -21,9 +21,11 @@ not replayed in this isolated workspace.
 
 ## Domain 2 - Localization and state estimation
 
-- [ ] **H24:** define frames, sensor calibrations, GNSS/IMU/odometry data
+- [x] **H24 software:** [normalized synthetic localization dataset and validator](LOCALIZATION_REPLAY_H24.md).
+- [ ] **H24 measured session:** define frames, sensor calibrations, GNSS/IMU/odometry data
   and independently measured reference trajectory.
-- [ ] **H25:** evaluate offline EKF/SLAM or odometry baselines using
+- [x] **H25 scoring software:** synthetic exact-time position RMSE, coverage and gap resumption.
+- [ ] **H25 evaluation:** evaluate offline EKF/SLAM or odometry baselines using
   held-out trajectory error, failure, and recovery metrics.
 - [ ] **H26:** propose a ROS 2 estimator adapter only after evidence review.
   Arrival liveness must not be relabeled as pose confidence.
